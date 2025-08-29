@@ -38,7 +38,22 @@ except ImportError:
 # Importação da configuração do banco
 def get_mysql_config(env='local'):
     """Obtém configuração do MySQL a partir de variáveis de ambiente ou configuração padrão"""
-    # Tenta usar DATABASE_URL primeiro (para Railway, Heroku, etc.)
+    # Primeiro tenta usar MYSQL_PUBLIC_URL (para Railway)
+    public_url = os.getenv('MYSQL_PUBLIC_URL')
+    if public_url:
+        try:
+            parsed = urlparse(public_url)
+            return {
+                'host': parsed.hostname,
+                'port': parsed.port or 3306,
+                'user': parsed.username,
+                'password': parsed.password,
+                'database': parsed.path.lstrip('/') if parsed.path.lstrip('/') else 'railway'
+            }
+        except Exception as e:
+            print(f"Erro ao parsear MYSQL_PUBLIC_URL: {e}")
+    
+    # Depois tenta usar DATABASE_URL (para outros serviços)
     database_url = os.getenv('DATABASE_URL')
     if database_url:
         try:
@@ -53,13 +68,13 @@ def get_mysql_config(env='local'):
         except Exception as e:
             print(f"Erro ao parsear DATABASE_URL: {e}")
     
-    # Usa variáveis de ambiente individuais
+    # Por último usa variáveis de ambiente individuais (Railway style)
     return {
-        'host': os.getenv('DB_HOST', 'localhost'),
-        'port': int(os.getenv('DB_PORT', 3306)),
-        'user': os.getenv('DB_USER', 'root'),
-        'password': os.getenv('DB_PASSWORD', 'root'),
-        'database': os.getenv('DB_NAME', 'pryzor_db')
+        'host': os.getenv('MYSQL_HOST', os.getenv('MYSQLHOST', 'localhost')),
+        'port': int(os.getenv('MYSQL_PORT', os.getenv('MYSQLPORT', 3306))),
+        'user': os.getenv('MYSQL_USER', os.getenv('MYSQLUSER', 'root')),
+        'password': os.getenv('MYSQL_PASSWORD', os.getenv('MYSQLPASSWORD', 'root')),
+        'database': os.getenv('MYSQL_DATABASE', os.getenv('MYSQLDATABASE', 'railway'))
     }
 
 class DatabaseManager:

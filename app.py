@@ -33,13 +33,22 @@ def init_database():
         import pymysql
         
         config = get_mysql_config()
+        print(f"🔧 Configuração MySQL:")
+        print(f"   Host: {config['host']}")
+        print(f"   Port: {config['port']}")
+        print(f"   User: {config['user']}")
+        print(f"   Database: {config['database']}")
+        print(f"   Password: {'*' * len(str(config['password']))}")
+        
         connection = pymysql.connect(
             host=config['host'],
             port=config['port'],
             user=config['user'],
             password=config['password'],
             database=config['database'],
-            charset='utf8mb4'
+            charset='utf8mb4',
+            connect_timeout=30,
+            autocommit=True
         )
         
         cursor = connection.cursor()
@@ -74,16 +83,17 @@ def init_database():
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao inicializar banco: {str(e)}")
+        print(f"⚠️  MySQL não disponível: {str(e)}")
+        print("🔄 Aplicação continuará com dados de demonstração")
         return False
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
 CORS(app)  # Permite requisições do frontend
 
-# Inicializa o banco de dados
-print("🚀 Inicializando banco de dados...")
-init_database()
+# Inicializa o banco de dados (não crítico para inicialização)
+print("🚀 Inicializando aplicação...")
+db_available = init_database()
 
 # ========================
 # ROTAS DE SISTEMA
@@ -128,36 +138,57 @@ def listar_jogos():
     """
     try:
         print("Iniciando consulta de jogos...")
-        db = DatabaseManager()
-        print("DatabaseManager criado com sucesso")
         
-        games_df = db.get_games()
-        print(f"Jogos obtidos: {len(games_df) if not games_df.empty else 0}")
-        
-        if games_df.empty:
-            return jsonify({
-                "success": True, 
-                "data": [],
-                "total": 0,
-                "message": "Nenhum jogo encontrado"
-            })
-        
-        games_list = games_df.to_dict('records')
+        # Tenta usar o banco de dados
+        if db_available:
+            db = DatabaseManager()
+            print("DatabaseManager criado com sucesso")
+            
+            games_df = db.get_games()
+            print(f"Jogos obtidos: {len(games_df) if not games_df.empty else 0}")
+            
+            if games_df.empty:
+                return jsonify({
+                    "success": True, 
+                    "data": [],
+                    "total": 0,
+                    "message": "Nenhum jogo encontrado"
+                })
+            
+            games_list = games_df.to_dict('records')
+        else:
+            # Usa dados de demonstração
+            print("Usando dados de demonstração")
+            from src.sample_data import SAMPLE_GAMES
+            games_list = SAMPLE_GAMES
         
         return jsonify({
             "success": True, 
             "data": games_list,
-            "total": len(games_list)
+            "total": len(games_list),
+            "source": "database" if db_available else "demo"
         })
         
     except Exception as e:
         print(f"Erro ao buscar jogos: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            "success": False, 
-            "error": f"Erro ao buscar jogos: {str(e)}"
-        }), 500
+        
+        # Fallback para dados de demonstração
+        try:
+            from src.sample_data import SAMPLE_GAMES
+            return jsonify({
+                "success": True, 
+                "data": SAMPLE_GAMES,
+                "total": len(SAMPLE_GAMES),
+                "source": "demo",
+                "note": "Usando dados de demonstração devido a erro no banco"
+            })
+        except:
+            return jsonify({
+                "success": False, 
+                "error": f"Erro ao buscar jogos: {str(e)}"
+            }), 500
 
 @app.route('/api/games/<steam_id>')
 def obter_jogo(steam_id):
@@ -265,38 +296,55 @@ def obter_predicoes():
     recentes para estimar direção dos preços.
     """
     try:
-        db = DatabaseManager()
-        analyzer = BasicAnalyzer()
-        
-        # Buscar jogos com dados suficientes
-        games_df = db.get_games()
-        predictions = []
-        
-        for _, game in games_df.iterrows():
-            if game['current_price'] is None or game['current_price'] == 0:
-                continue
-                
-            # Análise simples de tendência (pode ser expandida)
-            prediction_data = {
-                "game": game['name'],
-                "current_price": float(game['current_price']),
-                "predicted_price": float(game['current_price']) * 0.95,  # Estimativa conservadora
-                "trend_percent": -5.0,  # Tendência de queda conservadora
-                "recommendation": "AGUARDAR" if game['current_price'] > 50 else "COMPRAR"
-            }
-            predictions.append(prediction_data)
+        if db_available:
+            db = DatabaseManager()
+            analyzer = BasicAnalyzer()
+            
+            # Buscar jogos com dados suficientes
+            games_df = db.get_games()
+            predictions = []
+            
+            for _, game in games_df.iterrows():
+                if game['current_price'] is None or game['current_price'] == 0:
+                    continue
+                    
+                # Análise simples de tendência (pode ser expandida)
+                prediction_data = {
+                    "game": game['name'],
+                    "current_price": float(game['current_price']),
+                    "predicted_price": float(game['current_price']) * 0.95,  # Estimativa conservadora
+                    "trend_percent": -5.0,  # Tendência de queda conservadora
+                    "recommendation": "AGUARDAR" if game['current_price'] > 50 else "COMPRAR"
+                }
+                predictions.append(prediction_data)
+        else:
+            # Usar dados de demonstração
+            from src.sample_data import SAMPLE_PREDICTIONS
+            predictions = SAMPLE_PREDICTIONS
         
         return jsonify({
             "success": True,
             "data": predictions[:10],  # Limitar a 10 resultados
-            "total": len(predictions)
+            "total": len(predictions),
+            "source": "database" if db_available else "demo"
         })
         
     except Exception as e:
-        return jsonify({
-            "success": False, 
-            "error": f"Erro ao gerar predições: {str(e)}"
-        }), 500
+        # Fallback para dados de demonstração
+        try:
+            from src.sample_data import SAMPLE_PREDICTIONS
+            return jsonify({
+                "success": True,
+                "data": SAMPLE_PREDICTIONS,
+                "total": len(SAMPLE_PREDICTIONS),
+                "source": "demo",
+                "note": "Usando dados de demonstração devido a erro"
+            })
+        except:
+            return jsonify({
+                "success": False, 
+                "error": f"Erro ao gerar predições: {str(e)}"
+            }), 500
 
 @app.route('/api/analysis/best-deals')
 def melhores_ofertas():
