@@ -13,45 +13,62 @@ Autor: Gustavo Peruci
 Projeto Universitário - Análise de Dados
 """
 
+import pandas as pd
+import numpy as np
+import logging
+import os
+import sqlite3
+from urllib.parse import urlparse
+
 # Configuração de conectores MySQL
 # Prioriza PyMySQL por ser mais simples de instalar
-try:
-    import pymysql
-    pymysql.install_as_MySQLdb()
-    MYSQL_CONNECTOR = 'pymysql'
-    Error = pymysql.Error
-    print("✅ Usando PyMySQL")
-except ImportError:
-    try:
-        import mysql.connector
-        from mysql.connector import Error
-        MYSQL_CONNECTOR = 'mysql.connector'
-        print("✅ Usando MySQL Connector")
-    except ImportError:
-        raise ImportError("Instale mysql-connector-python ou pymysql: pip install pymysql")
+USE_SQLITE = os.getenv('USE_SQLITE', 'false').lower() == 'true'
 
-import pandas as pd
-from pathlib import Path
-import logging
-from datetime import datetime
-import sys
-import os
+if not USE_SQLITE:
+    try:
+        import pymysql
+        pymysql.install_as_MySQLdb()
+        MYSQL_CONNECTOR = 'pymysql'
+        Error = pymysql.Error
+        print("✅ Usando PyMySQL")
+    except ImportError:
+        try:
+            import mysql.connector
+            from mysql.connector import Error
+            MYSQL_CONNECTOR = 'mysql.connector'
+            print("✅ Usando MySQL Connector")
+        except ImportError:
+            print("❌ MySQL não disponível, usando SQLite como fallback")
+            USE_SQLITE = True
+else:
+    print("✅ Usando SQLite conforme configuração")
 
 # Importação da configuração do banco
-try:
-    from src.mysql_config import MYSQL_CONFIG
-    def get_mysql_config(env='local'):
-        return MYSQL_CONFIG
-except ImportError:
-    # Configuração padrão se o arquivo não existir
-    def get_mysql_config(env='local'):
-        return {
-            'host': 'localhost',
-            'port': 3306,
-            'user': 'root',
-            'password': 'root',
-            'database': 'pryzor_db'
-        }
+def get_mysql_config(env='local'):
+    """Obtém configuração do MySQL a partir de variáveis de ambiente ou configuração padrão"""
+    # Tenta usar DATABASE_URL primeiro (para Railway, Heroku, etc.)
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        try:
+            parsed = urlparse(database_url)
+            return {
+                'host': parsed.hostname,
+                'port': parsed.port or 3306,
+                'user': parsed.username,
+                'password': parsed.password,
+                'database': parsed.path.lstrip('/')
+            }
+        except Exception as e:
+            print(f"Erro ao parsear DATABASE_URL: {e}")
+    
+    # Usa variáveis de ambiente individuais
+    return {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', 3306)),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', 'root'),
+        'database': os.getenv('DB_NAME', 'pryzor_db')
+    }
 
 class DatabaseManager:
     def __init__(self, environment='local'):

@@ -35,6 +35,22 @@ CORS(app)  # Permite requisições do frontend
 # ROTAS DE SISTEMA
 # ========================
 
+@app.route('/')
+def home():
+    """Rota raiz da API - informações básicas do sistema."""
+    return jsonify({
+        "message": "API PRYZOR - Sistema de Análise de Preços Steam",
+        "version": "1.0",
+        "endpoints": {
+            "health": "/health",
+            "games": "/api/games",
+            "predictions": "/api/predictions",
+            "buy_analysis": "/api/buy-analysis",
+            "temporal_validation": "/api/temporal-validation"
+        },
+        "status": "online"
+    })
+
 @app.route('/health')
 def health_check():
     """Verifica se a API está funcionando."""
@@ -57,8 +73,12 @@ def listar_jogos():
         JSON com lista de jogos e seus preços atuais
     """
     try:
+        print("Iniciando consulta de jogos...")
         db = DatabaseManager()
+        print("DatabaseManager criado com sucesso")
+        
         games_df = db.get_games()
+        print(f"Jogos obtidos: {len(games_df) if not games_df.empty else 0}")
         
         if games_df.empty:
             return jsonify({
@@ -77,6 +97,9 @@ def listar_jogos():
         })
         
     except Exception as e:
+        print(f"Erro ao buscar jogos: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False, 
             "error": f"Erro ao buscar jogos: {str(e)}"
