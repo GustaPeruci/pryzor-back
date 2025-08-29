@@ -23,13 +23,67 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 # Importações dos módulos do projeto
-from src.database_manager import DatabaseManager
+from src.database_manager import DatabaseManager, get_mysql_config
 from src.basic_analyzer import BasicAnalyzer
 from buy_analyzer import SimpleBuyingAnalyzer
+
+def init_database():
+    """Inicializa o banco de dados com migrações se necessário"""
+    try:
+        import pymysql
+        
+        config = get_mysql_config()
+        connection = pymysql.connect(
+            host=config['host'],
+            port=config['port'],
+            user=config['user'],
+            password=config['password'],
+            database=config['database'],
+            charset='utf8mb4'
+        )
+        
+        cursor = connection.cursor()
+        
+        # Verifica se a tabela games existe
+        cursor.execute("SHOW TABLES LIKE 'games'")
+        if not cursor.fetchone():
+            print("🔧 Tabelas não encontradas, executando migrações...")
+            
+            # Importa e executa migrações
+            from src.migrations import CREATE_TABLES_SQL, INITIAL_DATA_SQL
+            
+            # Cria tabelas
+            statements = CREATE_TABLES_SQL.strip().split(';')
+            for statement in statements:
+                if statement.strip():
+                    cursor.execute(statement)
+            
+            # Insere dados iniciais
+            statements = INITIAL_DATA_SQL.strip().split(';')
+            for statement in statements:
+                if statement.strip():
+                    cursor.execute(statement)
+            
+            connection.commit()
+            print("✅ Migrações executadas com sucesso!")
+        else:
+            print("✅ Banco de dados já inicializado")
+            
+        cursor.close()
+        connection.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erro ao inicializar banco: {str(e)}")
+        return False
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
 CORS(app)  # Permite requisições do frontend
+
+# Inicializa o banco de dados
+print("🚀 Inicializando banco de dados...")
+init_database()
 
 # ========================
 # ROTAS DE SISTEMA

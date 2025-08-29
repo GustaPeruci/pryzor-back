@@ -17,31 +17,23 @@ import pandas as pd
 import numpy as np
 import logging
 import os
-import sqlite3
 from urllib.parse import urlparse
 
 # Configuração de conectores MySQL
-# Prioriza PyMySQL por ser mais simples de instalar
-USE_SQLITE = os.getenv('USE_SQLITE', 'false').lower() == 'true'
-
-if not USE_SQLITE:
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    MYSQL_CONNECTOR = 'pymysql'
+    Error = pymysql.Error
+    print("✅ Usando PyMySQL")
+except ImportError:
     try:
-        import pymysql
-        pymysql.install_as_MySQLdb()
-        MYSQL_CONNECTOR = 'pymysql'
-        Error = pymysql.Error
-        print("✅ Usando PyMySQL")
+        import mysql.connector
+        from mysql.connector import Error
+        MYSQL_CONNECTOR = 'mysql.connector'
+        print("✅ Usando MySQL Connector")
     except ImportError:
-        try:
-            import mysql.connector
-            from mysql.connector import Error
-            MYSQL_CONNECTOR = 'mysql.connector'
-            print("✅ Usando MySQL Connector")
-        except ImportError:
-            print("❌ MySQL não disponível, usando SQLite como fallback")
-            USE_SQLITE = True
-else:
-    print("✅ Usando SQLite conforme configuração")
+        raise ImportError("Instale mysql-connector-python ou pymysql: pip install pymysql")
 
 # Importação da configuração do banco
 def get_mysql_config(env='local'):
