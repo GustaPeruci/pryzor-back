@@ -1,0 +1,146 @@
+# 🎮 PRYZOR - .gitignore
+
+# ==========================================
+# PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==========================================
+# AMBIENTES VIRTUAIS
+# ==========================================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# IDE/EDITORES
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==========================================
+# JUPYTER NOTEBOOKS
+# ==========================================
+.ipynb_checkpoints
+
+# ==========================================
+# DADOS SENSÍVEIS
+# ==========================================
+# Configurações de banco com senhas
+mysql_config_local.py
+database_credentials.json
+.env.local
+
+# Dados pessoais/sensíveis
+data/personal_data/
+data/user_profiles/
+
+# ==========================================
+# DADOS TEMPORÁRIOS/CACHE
+# ==========================================
+# Cache de análises
+data/cache/
+data/temp/
+*.tmp
+*.cache
+
+# Logs detalhados
+logs/
+*.log
+
+# Backups automáticos
+backup_*.db
+backup_*.sql
+
+# ==========================================
+# MYSQL/BANCO DE DADOS
+# ==========================================
+# Dumps de banco sensíveis
+*.sql
+!schema.sql  # Permitir apenas schema
+mysql_data/
+
+# ==========================================
+# RESULTADOS GRANDES
+# ==========================================
+# CSVs muito grandes (>50MB)
+data/steamdb_csv/*_full.csv
+data/steamdb_csv/*_complete.csv
+
+# Arquivos de modelo ML treinados (podem ser grandes)
+models/
+*.joblib
+*.pkl
+*.model
+
+# ==========================================
+# SISTEMA OPERACIONAL
+# ==========================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ==========================================
+# ARQUIVOS DE CONFIGURAÇÃO LOCAL
+# ==========================================
+config_local.py
+settings_local.json
+
+# ==========================================
+# ARQUIVOS DE TESTE
+# ==========================================
+test_output/
+test_data/
+coverage/
+.coverage
+.pytest_cache/
+
+# ==========================================
+# DOCUMENTAÇÃO GERADA
+# ==========================================
+docs/_build/
+docs/build/
+
+# ==========================================
+# PERMITIR ARQUIVOS IMPORTANTES
+# ==========================================
+# Forçar inclusão de arquivos importantes mesmo se ignorados acima
+!data/steamdb_csv/steamdb_dataset_geral_wide.csv
+!data/analysis_output/.gitkeep
+!archive/.gitkeep
