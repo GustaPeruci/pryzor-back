@@ -91,9 +91,16 @@ def init_database():
 app = Flask(__name__)
 CORS(app)  # Permite requisições do frontend
 
-# Inicializa o banco de dados (não crítico para inicialização)
-print("🚀 Inicializando aplicação...")
-db_available = init_database()
+# Variável global para controlar estado do banco
+db_available = None
+
+def get_db_status():
+    """Verifica e retorna o status do banco de dados"""
+    global db_available
+    if db_available is None:
+        print("🚀 Inicializando banco de dados...")
+        db_available = init_database()
+    return db_available
 
 # ========================
 # ROTAS DE SISTEMA
@@ -118,10 +125,12 @@ def home():
 @app.route('/health')
 def health_check():
     """Verifica se a API está funcionando."""
+    db_status = get_db_status()
     return jsonify({
         "status": "ok", 
         "message": "API PRYZOR funcionando",
-        "projeto": "Sistema de Análise de Preços Steam"
+        "projeto": "Sistema de Análise de Preços Steam",
+        "database": "connected" if db_status else "demo_mode"
     })
 
 # ========================
@@ -139,8 +148,11 @@ def listar_jogos():
     try:
         print("Iniciando consulta de jogos...")
         
+        # Verifica status do banco
+        db_status = get_db_status()
+        
         # Tenta usar o banco de dados
-        if db_available:
+        if db_status:
             db = DatabaseManager()
             print("DatabaseManager criado com sucesso")
             
@@ -166,7 +178,7 @@ def listar_jogos():
             "success": True, 
             "data": games_list,
             "total": len(games_list),
-            "source": "database" if db_available else "demo"
+            "source": "database" if db_status else "demo"
         })
         
     except Exception as e:
