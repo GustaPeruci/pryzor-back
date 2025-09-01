@@ -6,81 +6,70 @@ Arquivo de configuração separado para facilitar mudanças
 import os
 from pathlib import Path
 
-# Configurações do MySQL
-MYSQL_CONFIG = {
-    'host': 'localhost',
-    'port': 3306,
-    'user': 'root',  # Ajuste conforme necessário
-    'password': 'root',  # Deixe vazio se não houver senha ou configure
-    'database': 'pryzor_db',
-    'charset': 'utf8mb4',
-    'autocommit': True,
-    'auth_plugin': 'mysql_native_password'  # Para compatibilidade
-}
-
-# Configurações de conexão alternativas para diferentes ambientes
-MYSQL_CONFIGS = {
-    'local': {
-        'host': 'localhost',
-        'port': 3306,
-        'user': 'root',
-        'password': 'root',
-        'database': 'pryzor_db',
-        'auth_plugin': 'mysql_native_password'
-    },
-    'docker': {
-        'host': 'localhost',
-        'port': 3306,
-        'user': 'pryzor_user',
-        'password': 'pryzor_pass',
-        'database': 'pryzor_db'
-    },
-        'xampp': {
-        'host': 'localhost',
-        'port': 3306,
-        'user': 'root',
-        'password': 'root',  # XAMPP/Local (senha root)
-        'database': 'pryzor_db'
-    }
-}
-
-def get_mysql_config(environment='local'):
-    """Retorna configuração do MySQL baseada no ambiente"""
-    return MYSQL_CONFIGS.get(environment, MYSQL_CONFIGS['local'])
-
-def get_connection_string(environment='local'):
-    """Retorna string de conexão SQLAlchemy para MySQL"""
-    config = get_mysql_config(environment)
-    if config['password']:
-        return f"mysql+pymysql://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['database']}?charset=utf8mb4"
+def get_database_url():
+    """
+    Retorna a URL de conexão do banco de dados.
+    Prioriza variáveis de ambiente do Railway, depois configurações locais.
+    """
+    # Verifica se está no Railway (produção)
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        # Configuração do Railway
+        host = os.environ.get('MYSQL_HOST', 'mysql.railway.internal')
+        port = os.environ.get('MYSQL_PORT', '3306')
+        user = os.environ.get('MYSQL_USER', 'root')
+        password = os.environ.get('MYSQL_PASSWORD', '')
+        database = os.environ.get('MYSQL_DATABASE', 'railway')
+        
+        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}?charset=utf8mb4"
+    
     else:
-        return f"mysql+pymysql://{config['user']}@{config['host']}:{config['port']}/{config['database']}?charset=utf8mb4"
+        # Configuração local para desenvolvimento
+        return "mysql+pymysql://root:root@localhost:3306/pryzor_db?charset=utf8mb4"
+
+def get_mysql_connection_info():
+    """Retorna informações sobre a conexão atual"""
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        return {
+            'environment': 'Railway (Production)',
+            'host': os.environ.get('MYSQL_HOST', 'N/A'),
+            'database': os.environ.get('MYSQL_DATABASE', 'N/A'),
+            'user': os.environ.get('MYSQL_USER', 'N/A')
+        }
+    else:
+        return {
+            'environment': 'Local Development',
+            'host': 'localhost',
+            'database': 'pryzor_db',
+            'user': 'root'
+        }
 
 # Instruções de configuração
 SETUP_INSTRUCTIONS = """
 🔧 CONFIGURAÇÃO DO MYSQL:
 
+PRODUÇÃO (Railway):
+- As variáveis de ambiente são configuradas automaticamente
+- Banco: MySQL no Railway
+- Conexão automática via MYSQL_HOST, MYSQL_USER, etc.
+
+DESENVOLVIMENTO LOCAL:
 1. Instale o MySQL Server:
    - Windows: https://dev.mysql.com/downloads/installer/
    - XAMPP: https://www.apachefriends.org/
-   - Docker: docker run -d -p 3306:3306 --name mysql-pryzor -e MYSQL_ROOT_PASSWORD=pryzor_pass mysql:8.0
+   - Docker: docker run -d -p 3306:3306 --name mysql-pryzor -e MYSQL_ROOT_PASSWORD=root mysql:8.0
 
-2. Configure a conexão em mysql_config.py:
-   - Ajuste host, user, password conforme sua instalação
-   - Escolha o ambiente adequado (local, docker, xampp)
+2. Crie o banco 'pryzor_db' localmente
+3. Configure user: 'root', password: 'root'
 
-3. Execute setup_mysql.py para criar o banco:
+4. Execute setup_mysql.py para criar as tabelas:
    python setup_mysql.py
-
-4. O projeto criará automaticamente as tabelas necessárias
 """
 
 if __name__ == "__main__":
     print(SETUP_INSTRUCTIONS)
     print("\n📋 Configuração atual:")
-    config = get_mysql_config()
-    for key, value in config.items():
-        if key == 'password':
-            print(f"  {key}: {'***' if value else '(sem senha)'}")
-        else:
-            print(f"  {key}: {value}")
+    info = get_mysql_connection_info()
+    for key, value in info.items():
+        print(f"  {key}: {value}")
+    
+    print(f"\n🔗 Database URL: {get_database_url()[:50]}...")

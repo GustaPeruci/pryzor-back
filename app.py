@@ -1,7 +1,7 @@
 """
-PRYZOR - API Flask Mínima para Railway
-=====================================
-Versão mínima para resolver problemas de deploy
+PRYZOR - API Flask com Banco de Dados MySQL
+===========================================
+Versão completa conectada ao MySQL (Railway em produção, local em desenvolvimento)
 """
 
 from flask import Flask, jsonify, request
@@ -9,9 +9,19 @@ from flask_cors import CORS
 import os
 import sys
 
+# Importações do banco de dados
+try:
+    from src.database import init_database, test_connection, create_tables, insert_sample_data, Game, PricePrediction, SessionLocal
+    from src.mysql_config import get_mysql_connection_info
+    database_available = True
+except ImportError as e:
+    print(f"⚠️  Módulos de banco não encontrados: {e}")
+    database_available = False
+
 # Logging básico
 print("🔧 Python version:", sys.version)
 print("🔧 Working directory:", os.getcwd())
+print(f"🔧 Database modules: {'Available' if database_available else 'Not Available'}")
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
@@ -26,21 +36,40 @@ CORS(app, origins=[
 
 print("✅ Flask app criado com sucesso")
 
+# Inicialização do banco de dados
+if database_available:
+    print("🔧 Inicializando banco de dados...")
+    if init_database():
+        print("✅ Banco inicializado com sucesso")
+        # Cria tabelas se necessário
+        if create_tables():
+            print("✅ Tabelas verificadas/criadas")
+            # Insere dados de exemplo se necessário
+            insert_sample_data()
+    else:
+        print("❌ Falha ao inicializar banco - usando dados de demonstração")
+        database_available = False
+
 @app.route('/')
 def home():
     """Rota raiz da API"""
     return jsonify({
         "message": "PRYZOR API - Online",
-        "version": "1.0-minimal",
-        "status": "ok"
+        "version": "2.0-database",
+        "status": "ok",
+        "database": "connected" if database_available else "demo_mode"
     })
 
 @app.route('/health')
 def health_check():
     """Health check para Railway"""
+    db_status = test_connection() if database_available else {"success": False, "error": "Database module not available"}
+    
     return jsonify({
         "status": "healthy",
-        "service": "pryzor-backend"
+        "service": "pryzor-backend",
+        "database": db_status,
+        "connection_info": get_mysql_connection_info() if database_available else "demo_mode"
     })
 
 @app.route('/api/test')
@@ -49,92 +78,188 @@ def test_endpoint():
     return jsonify({
         "success": True,
         "message": "API funcionando corretamente",
+        "database_available": database_available,
         "environment_vars": {
             "PORT": os.environ.get('PORT', 'not_set'),
-            "RAILWAY_ENVIRONMENT": os.environ.get('RAILWAY_ENVIRONMENT', 'not_set')
+            "RAILWAY_ENVIRONMENT": os.environ.get('RAILWAY_ENVIRONMENT', 'not_set'),
+            "MYSQL_HOST": os.environ.get('MYSQL_HOST', 'not_set')
         }
     })
 
 @app.route('/api/games')
 def listar_jogos():
-    """Lista de jogos de demonstração"""
-    sample_games = [
-        {
-            "steam_id": 730,
-            "nome": "Counter-Strike 2",
-            "preco_atual": 0.00,
-            "desconto_atual": 0,
-            "categoria": "FPS"
-        },
-        {
-            "steam_id": 271590,
-            "nome": "Grand Theft Auto V", 
-            "preco_atual": 89.90,
-            "desconto_atual": 50,
-            "categoria": "Action"
-        },
-        {
-            "steam_id": 292030,
-            "nome": "The Witcher 3: Wild Hunt",
-            "preco_atual": 149.99,
-            "desconto_atual": 75,
-            "categoria": "RPG"
-        }
-    ]
+    """Lista de jogos do banco de dados"""
+    if not database_available:
+        # Dados de demonstração se o banco não estiver disponível
+        sample_games = [
+            {
+                "steam_id": 730,
+                "nome": "Counter-Strike 2",
+                "preco_atual": 0.00,
+                "desconto_atual": 0,
+                "categoria": "FPS"
+            },
+            {
+                "steam_id": 271590,
+                "nome": "Grand Theft Auto V", 
+                "preco_atual": 89.90,
+                "desconto_atual": 50,
+                "categoria": "Action"
+            },
+            {
+                "steam_id": 292030,
+                "nome": "The Witcher 3: Wild Hunt",
+                "preco_atual": 149.99,
+                "desconto_atual": 75,
+                "categoria": "RPG"
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "data": sample_games,
+            "total": len(sample_games),
+            "source": "demo"
+        })
     
-    return jsonify({
-        "success": True,
-        "data": sample_games,
-        "total": len(sample_games),
-        "source": "demo"
-    })
+    try:
+        db = SessionLocal()
+        games = db.query(Game).all()
+        
+        games_data = []
+        for game in games:
+            games_data.append({
+                "steam_id": game.steam_id,
+                "nome": game.nome,
+                "preco_atual": float(game.preco_atual),
+                "desconto_atual": game.desconto_atual,
+                "categoria": game.categoria
+            })
+        
+        db.close()
+        
+        return jsonify({
+            "success": True,
+            "data": games_data,
+            "total": len(games_data),
+            "source": "database"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "source": "database_error"
+        }), 500
 
 @app.route('/api/predictions')
 def obter_predicoes():
-    """Predições de demonstração"""
-    sample_predictions = [
-        {
-            "game": "Grand Theft Auto V",
-            "current_price": 89.90,
-            "predicted_price": 67.43,
-            "trend_percent": -25.0,
-            "recommendation": "COMPRAR"
-        },
-        {
-            "game": "The Witcher 3: Wild Hunt",
-            "current_price": 149.99,
-            "predicted_price": 99.99,
-            "trend_percent": -33.0,
-            "recommendation": "AGUARDAR"
-        }
-    ]
+    """Predições do banco de dados"""
+    if not database_available:
+        # Dados de demonstração
+        sample_predictions = [
+            {
+                "game": "Grand Theft Auto V",
+                "current_price": 89.90,
+                "predicted_price": 67.43,
+                "trend_percent": -25.0,
+                "recommendation": "COMPRAR"
+            },
+            {
+                "game": "The Witcher 3: Wild Hunt",
+                "current_price": 149.99,
+                "predicted_price": 99.99,
+                "trend_percent": -33.0,
+                "recommendation": "AGUARDAR"
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "data": sample_predictions,
+            "total": len(sample_predictions),
+            "source": "demo"
+        })
     
-    return jsonify({
-        "success": True,
-        "data": sample_predictions,
-        "total": len(sample_predictions),
-        "source": "demo"
-    })
+    try:
+        db = SessionLocal()
+        
+        # Query com JOIN para obter dados do jogo e predição
+        predictions_query = db.query(PricePrediction, Game).join(Game, PricePrediction.game_id == Game.id).all()
+        
+        predictions_data = []
+        for prediction, game in predictions_query:
+            predictions_data.append({
+                "game": game.nome,
+                "current_price": float(game.preco_atual),
+                "predicted_price": float(prediction.predicted_price),
+                "trend_percent": float(prediction.trend_percent),
+                "confidence": float(prediction.confidence),
+                "recommendation": prediction.recommendation
+            })
+        
+        db.close()
+        
+        return jsonify({
+            "success": True,
+            "data": predictions_data,
+            "total": len(predictions_data),
+            "source": "database"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "source": "database_error"
+        }), 500
 
 @app.route('/api/buy-analysis', methods=['GET', 'POST'])
 def buy_analysis():
     """Análise de compra de jogos"""
     if request.method == 'GET':
         # Lista jogos disponíveis para análise
-        games = [
-            {
-                "steam_id": 271590,
-                "nome": "Grand Theft Auto V",
-                "preco_atual": 89.90,
-                "desconto_atual": 50
-            },
-            {
-                "steam_id": 292030,
-                "nome": "The Witcher 3: Wild Hunt", 
-                "preco_atual": 149.99,
-                "desconto_atual": 75
-            }
-        ]
+        if not database_available:
+            games = [
+                {
+                    "steam_id": 271590,
+                    "nome": "Grand Theft Auto V",
+                    "preco_atual": 89.90,
+                    "desconto_atual": 50
+                },
+                {
+                    "steam_id": 292030,
+                    "nome": "The Witcher 3: Wild Hunt", 
+                    "preco_atual": 149.99,
+                    "desconto_atual": 75
+                }
+            ]
+        else:
+            try:
+                db = SessionLocal()
+                games_query = db.query(Game).filter(Game.preco_atual > 0).all()
+                
+                games = []
+                for game in games_query:
+                    games.append({
+                        "steam_id": game.steam_id,
+                        "nome": game.nome,
+                        "preco_atual": float(game.preco_atual),
+                        "desconto_atual": game.desconto_atual
+                    })
+                
+                db.close()
+                
+            except Exception as e:
+                # Fallback para dados demo em caso de erro
+                games = [
+                    {
+                        "steam_id": 271590,
+                        "nome": "Grand Theft Auto V",
+                        "preco_atual": 89.90,
+                        "desconto_atual": 50
+                    }
+                ]
         
         return jsonify({
             "success": True,
@@ -145,20 +270,61 @@ def buy_analysis():
         # Análise de compra específica
         data = request.get_json()
         
-        # Simulação de análise
-        score = 75  # Score base
-        if data.get('preco_atual', 0) < 50:
+        # Algoritmo melhorado de análise
+        score = 50  # Score base
+        factors = []
+        
+        preco = data.get('preco_atual', 0)
+        desconto = data.get('desconto_atual', 0)
+        
+        # Análise de preço
+        if preco == 0:
+            score += 30
+            factors.append("Jogo gratuito")
+        elif preco < 30:
+            score += 20
+            factors.append("Preço baixo")
+        elif preco < 60:
             score += 10
-        if data.get('desconto_atual', 0) > 50:
+            factors.append("Preço moderado")
+        elif preco > 150:
+            score -= 10
+            factors.append("Preço alto")
+            
+        # Análise de desconto
+        if desconto >= 75:
+            score += 25
+            factors.append("Desconto excelente (75%+)")
+        elif desconto >= 50:
             score += 15
+            factors.append("Desconto bom (50%+)")
+        elif desconto >= 25:
+            score += 8
+            factors.append("Desconto moderado (25%+)")
+        elif desconto == 0:
+            score -= 5
+            factors.append("Sem desconto")
+            
+        # Limita o score entre 0 e 100
+        score = max(0, min(score, 100))
+        
+        # Determina recomendação
+        if score >= 80:
+            recommendation = "COMPRAR AGORA"
+        elif score >= 60:
+            recommendation = "COMPRAR"
+        elif score >= 40:
+            recommendation = "CONSIDERAR"
+        else:
+            recommendation = "AGUARDAR"
             
         return jsonify({
             "success": True,
             "analysis": {
-                "score": min(score, 100),
-                "recommendation": "COMPRAR" if score >= 70 else "AGUARDAR",
-                "factors": ["Preço atrativo", "Desconto significativo"],
-                "confidence": 85
+                "score": score,
+                "recommendation": recommendation,
+                "factors": factors,
+                "confidence": min(95, max(60, score + 10))
             }
         })
 
