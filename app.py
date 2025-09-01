@@ -50,9 +50,15 @@ def test_endpoint():
 
 if __name__ == '__main__':
     try:
+        # O Railway fornece a porta via variável PORT
         port = int(os.environ.get('PORT', 5000))
         print(f"🚀 Tentando iniciar na porta: {port}")
         print(f"🔧 PORT env var: {os.environ.get('PORT', 'não definida')}")
+        
+        # Debug das variáveis relacionadas a porta
+        for key in sorted(os.environ.keys()):
+            if 'PORT' in key.upper():
+                print(f"   {key}={os.environ[key]}")
         
         app.run(host='0.0.0.0', port=port, debug=False)
     except Exception as e:
