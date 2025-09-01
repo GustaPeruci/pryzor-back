@@ -186,8 +186,14 @@ def temporal_validation():
 
 if __name__ == '__main__':
     try:
-        # O Railway fornece a porta via variável PORT
+        # Força uso da porta padrão para Railway se PORT não estiver definida corretamente
         port = int(os.environ.get('PORT', 5000))
+        
+        # Se a porta for 3306 (MySQL), use a porta padrão do Railway
+        if port == 3306:
+            port = 5000
+            print("⚠️  PORT era 3306 (MySQL), mudando para 5000")
+        
         print(f"🚀 Tentando iniciar na porta: {port}")
         print(f"🔧 PORT env var: {os.environ.get('PORT', 'não definida')}")
         
