@@ -83,4 +83,8 @@ def obter_predicoes():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🚀 Iniciando servidor na porta {port}")
+    print(f"🔧 Variáveis de ambiente disponíveis:")
+    for key in sorted(os.environ.keys()):
+        if any(keyword in key.upper() for keyword in ['PORT', 'MYSQL', 'RAILWAY']):
+            print(f"   {key}={os.environ[key]}")
     app.run(host='0.0.0.0', port=port, debug=False)
