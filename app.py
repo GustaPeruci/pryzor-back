@@ -11,7 +11,7 @@ import sys
 
 # Importações do banco de dados
 try:
-    from src.database import init_database, test_connection, create_tables, insert_sample_data, Game, PricePrediction, SessionLocal
+    from src.database import init_database, test_connection, create_tables, insert_sample_data, Game, PricePrediction, get_db
     from src.mysql_config import get_mysql_connection_info
     database_available = True
 except ImportError as e:
@@ -123,7 +123,7 @@ def listar_jogos():
         })
     
     try:
-        db = SessionLocal()
+        db = get_db()
         games = db.query(Game).all()
         
         games_data = []
@@ -182,7 +182,7 @@ def obter_predicoes():
         })
     
     try:
-        db = SessionLocal()
+        db = get_db()
         
         # Query com JOIN para obter dados do jogo e predição
         predictions_query = db.query(PricePrediction, Game).join(Game, PricePrediction.game_id == Game.id).all()
@@ -236,7 +236,7 @@ def buy_analysis():
             ]
         else:
             try:
-                db = SessionLocal()
+                db = get_db()
                 games_query = db.query(Game).filter(Game.preco_atual > 0).all()
                 
                 games = []

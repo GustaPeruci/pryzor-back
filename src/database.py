@@ -53,11 +53,7 @@ def get_db():
     if SessionLocal is None:
         init_database()
     
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    return SessionLocal()
 
 def test_connection():
     """Testa a conexão com o banco"""
@@ -117,7 +113,7 @@ def insert_sample_data():
         if SessionLocal is None:
             init_database()
             
-        db = SessionLocal()
+        db = get_db()
         
         # Verifica se já existem jogos
         existing_games = db.query(Game).count()
