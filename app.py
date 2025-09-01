@@ -15,7 +15,14 @@ print("🔧 Working directory:", os.getcwd())
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
-CORS(app)
+
+# Configuração CORS mais permissiva para produção
+CORS(app, origins=[
+    "https://pryzor-front.vercel.app",
+    "https://*.vercel.app", 
+    "http://localhost:5173",
+    "http://localhost:3000"
+])
 
 print("✅ Flask app criado com sucesso")
 
