@@ -1,90 +1,62 @@
 """
-PRYZOR - API Flask Simplificada para Railway
-============================================
-Versão simplificada para debugging no Railway
+PRYZOR - API Flask Mínima para Railway
+=====================================
+Versão mínima para resolver problemas de deploy
 """
 
 from flask import Flask, jsonify
 from flask_cors import CORS
 import os
+import sys
+
+# Logging básico
+print("🔧 Python version:", sys.version)
+print("🔧 Working directory:", os.getcwd())
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
 CORS(app)
 
-print("🚀 Iniciando aplicação PRYZOR...")
+print("✅ Flask app criado com sucesso")
 
 @app.route('/')
 def home():
-    """Rota raiz da API - informações básicas do sistema."""
+    """Rota raiz da API"""
     return jsonify({
-        "message": "API PRYZOR - Sistema de Análise de Preços Steam",
-        "version": "1.0-simple",
-        "status": "online",
-        "environment": "railway"
+        "message": "PRYZOR API - Online",
+        "version": "1.0-minimal",
+        "status": "ok"
     })
 
 @app.route('/health')
 def health_check():
-    """Verifica se a API está funcionando."""
+    """Health check para Railway"""
     return jsonify({
-        "status": "ok", 
-        "message": "API PRYZOR funcionando",
-        "projeto": "Sistema de Análise de Preços Steam"
+        "status": "healthy",
+        "service": "pryzor-backend"
     })
 
-@app.route('/api/games')
-def listar_jogos():
-    """Lista de jogos de demonstração"""
-    sample_games = [
-        {
-            "steam_id": 730,
-            "nome": "Counter-Strike 2",
-            "preco_atual": 0.00,
-            "desconto_atual": 0,
-            "categoria": "FPS"
-        },
-        {
-            "steam_id": 271590,
-            "nome": "Grand Theft Auto V", 
-            "preco_atual": 89.90,
-            "desconto_atual": 50,
-            "categoria": "Action"
-        }
-    ]
-    
+@app.route('/api/test')
+def test_endpoint():
+    """Endpoint de teste"""
     return jsonify({
         "success": True,
-        "data": sample_games,
-        "total": len(sample_games),
-        "source": "demo"
-    })
-
-@app.route('/api/predictions')
-def obter_predicoes():
-    """Predições de demonstração"""
-    sample_predictions = [
-        {
-            "game": "Grand Theft Auto V",
-            "current_price": 89.90,
-            "predicted_price": 67.43,
-            "trend_percent": -25.0,
-            "recommendation": "COMPRAR"
+        "message": "API funcionando corretamente",
+        "environment_vars": {
+            "PORT": os.environ.get('PORT', 'not_set'),
+            "RAILWAY_ENVIRONMENT": os.environ.get('RAILWAY_ENVIRONMENT', 'not_set')
         }
-    ]
-    
-    return jsonify({
-        "success": True,
-        "data": sample_predictions,
-        "total": len(sample_predictions),
-        "source": "demo"
     })
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    print(f"🚀 Iniciando servidor na porta {port}")
-    print(f"🔧 Variáveis de ambiente disponíveis:")
-    for key in sorted(os.environ.keys()):
-        if any(keyword in key.upper() for keyword in ['PORT', 'MYSQL', 'RAILWAY']):
-            print(f"   {key}={os.environ[key]}")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    try:
+        port = int(os.environ.get('PORT', 5000))
+        print(f"🚀 Tentando iniciar na porta: {port}")
+        print(f"🔧 PORT env var: {os.environ.get('PORT', 'não definida')}")
+        
+        app.run(host='0.0.0.0', port=port, debug=False)
+    except Exception as e:
+        print(f"❌ Erro ao iniciar aplicação: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
