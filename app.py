@@ -93,22 +93,31 @@ def listar_jogos():
         # Dados de demonstração se o banco não estiver disponível
         sample_games = [
             {
+                "id": 1,
                 "steam_id": 730,
+                "name": "Counter-Strike 2",
                 "nome": "Counter-Strike 2",
+                "current_price": 0.00,
                 "preco_atual": 0.00,
                 "desconto_atual": 0,
                 "categoria": "FPS"
             },
             {
+                "id": 2,
                 "steam_id": 271590,
-                "nome": "Grand Theft Auto V", 
+                "name": "Grand Theft Auto V",
+                "nome": "Grand Theft Auto V",
+                "current_price": 89.90,
                 "preco_atual": 89.90,
                 "desconto_atual": 50,
                 "categoria": "Action"
             },
             {
+                "id": 3,
                 "steam_id": 292030,
+                "name": "The Witcher 3: Wild Hunt",
                 "nome": "The Witcher 3: Wild Hunt",
+                "current_price": 149.99,
                 "preco_atual": 149.99,
                 "desconto_atual": 75,
                 "categoria": "RPG"
@@ -129,9 +138,12 @@ def listar_jogos():
         games_data = []
         for game in games:
             games_data.append({
+                "id": game.id,
                 "steam_id": game.steam_id,
-                "nome": game.nome,
-                "preco_atual": float(game.preco_atual),
+                "name": game.nome,  # Frontend espera 'name'
+                "nome": game.nome,  # Mantém compatibilidade
+                "current_price": float(game.preco_atual),
+                "preco_atual": float(game.preco_atual),  # Mantém compatibilidade
                 "desconto_atual": game.desconto_atual,
                 "categoria": game.categoria
             })
@@ -222,14 +234,20 @@ def buy_analysis():
         if not database_available:
             games = [
                 {
+                    "id": 2,
                     "steam_id": 271590,
+                    "name": "Grand Theft Auto V",
                     "nome": "Grand Theft Auto V",
+                    "current_price": 89.90,
                     "preco_atual": 89.90,
                     "desconto_atual": 50
                 },
                 {
+                    "id": 3,
                     "steam_id": 292030,
+                    "name": "The Witcher 3: Wild Hunt",
                     "nome": "The Witcher 3: Wild Hunt", 
+                    "current_price": 149.99,
                     "preco_atual": 149.99,
                     "desconto_atual": 75
                 }
@@ -242,9 +260,12 @@ def buy_analysis():
                 games = []
                 for game in games_query:
                     games.append({
+                        "id": game.id,
                         "steam_id": game.steam_id,
-                        "nome": game.nome,
-                        "preco_atual": float(game.preco_atual),
+                        "name": game.nome,  # Frontend espera 'name'
+                        "nome": game.nome,  # Mantém compatibilidade
+                        "current_price": float(game.preco_atual),
+                        "preco_atual": float(game.preco_atual),  # Mantém compatibilidade
                         "desconto_atual": game.desconto_atual
                     })
                 
@@ -254,8 +275,11 @@ def buy_analysis():
                 # Fallback para dados demo em caso de erro
                 games = [
                     {
+                        "id": 2,
                         "steam_id": 271590,
+                        "name": "Grand Theft Auto V",
                         "nome": "Grand Theft Auto V",
+                        "current_price": 89.90,
                         "preco_atual": 89.90,
                         "desconto_atual": 50
                     }
