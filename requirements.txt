@@ -1,0 +1,40 @@
+# Web Framework
+fastapi>=0.95.0
+uvicorn[standard]>=0.20.0
+python-multipart>=0.0.6
+
+# Database  
+sqlalchemy>=1.4.0
+pymysql>=1.0.2
+mysql-connector-python>=8.0.0
+
+# Machine Learning & Data Science
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.1.0
+joblib>=1.2.0
+
+# HTTP & API
+httpx>=0.24.0
+requests>=2.28.0
+
+# Environment & Configuration
+python-dotenv>=0.19.0
+pydantic>=2.0.0
+
+# Testing (TDD requirement)
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+pytest-cov>=4.0.0
+
+# Code Quality
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.11.0
+
+# Data Visualization
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# Date handling
+python-dateutil>=2.8.0
