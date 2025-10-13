@@ -3,12 +3,23 @@ Pryzor API - MySQL Production Ready
 API final otimizada exclusivamente para MySQL
 """
 
+import os
+import sys
+import json
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+
 import mysql.connector
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-import json
+from pydantic import BaseModel
+
+# Ensure this src folder is importable (so that `import api.*` works when running by path)
+_SRC_DIR = os.path.dirname(__file__)
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
+
+from api.discount_service import DiscountForecastService
 
 app = FastAPI(
     title="Pryzor - Steam Price Prediction API",
@@ -26,12 +37,30 @@ app.add_middleware(
 
 # Configuração MySQL
 MYSQL_CONFIG = {
-    'host': 'localhost',
-    'port': 3306,
-    'user': 'root',
-    'password': 'root',
-    'database': 'steam_pryzor'
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', '3306')),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', os.getenv('DB_PASS', 'root')),
+    'database': os.getenv('DB_NAME', 'steam_pryzor')
 }
+
+# Lazy singleton for discount forecast service
+_discount_service: Optional[DiscountForecastService] = None
+
+def get_discount_service() -> DiscountForecastService:
+    global _discount_service
+    if _discount_service is None:
+        _discount_service = DiscountForecastService(mysql_config=MYSQL_CONFIG)
+    return _discount_service
+
+
+class BatchRequest(BaseModel):
+    appids: List[int]
+
+class BatchResponse(BaseModel):
+    results: Dict[int, Any]
+
+ 
 
 def get_mysql_connection():
     """Obtém conexão MySQL"""
@@ -70,49 +99,6 @@ async def startup_event():
     except Exception as e:
         print(f"❌ Erro na inicialização: {e}")
 
-@app.get("/")
-async def root():
-    """API Info"""
-    try:
-        conn = get_mysql_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT COUNT(*) FROM games")
-        games = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM price_history")
-        prices = cursor.fetchone()[0]
-        
-        cursor.close()
-        conn.close()
-        
-        return {
-            "name": "Pryzor - Steam Price Prediction API",
-            "version": "5.0.0",
-            "database": {
-                "type": "MySQL",
-                "status": "connected",
-                "games": games,
-                "price_records": prices
-            },
-            "features": [
-                "MySQL High Performance",
-                "Steam Games Database", 
-                "Price History Analytics",
-                "ML Price Predictions",
-                "Production Ready"
-            ],
-            "endpoints": {
-                "games": "/api/games",
-                "game_details": "/api/games/{appid}",
-                "predictions": "/api/predictions/{appid}",
-                "analytics": "/api/analytics",
-                "documentation": "/docs"
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
 
 @app.get("/health")
 async def health_check():
@@ -120,21 +106,19 @@ async def health_check():
     try:
         conn = get_mysql_connection()
         cursor = conn.cursor()
-        
-        # Testar query
+
         cursor.execute("SELECT 1")
         test = cursor.fetchone()[0]
-        
-        # Estatísticas
+
         cursor.execute("SELECT COUNT(*) FROM games")
         games = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM price_history")  
+
+        cursor.execute("SELECT COUNT(*) FROM price_history")
         prices = cursor.fetchone()[0]
-        
+
         cursor.close()
         conn.close()
-        
+
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
@@ -149,10 +133,8 @@ async def health_check():
                 "price_records": prices
             }
         }
-        
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
-
 @app.get("/api/games")
 async def list_games(
     limit: int = 100,
@@ -190,10 +172,29 @@ async def list_games(
         
         # Get games
         games_query = f"""
-            SELECT appid, name, type, releasedate, freetoplay,
-                   (SELECT COUNT(*) FROM price_history WHERE appid = games.appid) as price_records
+            SELECT 
+                games.appid as appid, 
+                games.name as name, 
+                games.type as type, 
+                games.releasedate as releasedate, 
+                games.freetoplay as freetoplay,
+                (
+                    SELECT ph.finalprice 
+                    FROM price_history ph 
+                    WHERE ph.appid = games.appid AND ph.finalprice IS NOT NULL 
+                    ORDER BY ph.date DESC 
+                    LIMIT 1
+                ) as current_price,
+                (
+                    SELECT ph.discount 
+                    FROM price_history ph 
+                    WHERE ph.appid = games.appid AND ph.discount IS NOT NULL 
+                    ORDER BY ph.date DESC 
+                    LIMIT 1
+                ) as current_discount,
+                (SELECT COUNT(*) FROM price_history WHERE appid = games.appid) as price_records
             FROM games {where_clause}
-            ORDER BY appid
+            ORDER BY games.appid
             LIMIT %s OFFSET %s
         """
         
@@ -220,6 +221,93 @@ async def list_games(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ml/discount-30d")
+async def discount_30d(appid: int):
+    """Predict probability of a discount >= threshold in next 30 days for given appid"""
+    try:
+        svc = get_discount_service()
+        result = svc.predict(appid)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ml/discount-30d/batch", response_model=BatchResponse)
+async def discount_30d_batch(req: BatchRequest):
+    """Batch prediction for multiple appids"""
+    try:
+        svc = get_discount_service()
+        results = svc.predict_batch(req.appids)
+        if all("error" in r for r in results.values()):
+            raise HTTPException(status_code=400, detail="No predictions available for provided appids")
+        return {"results": results}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ml/discount-30d/model-info")
+async def discount_model_info():
+    try:
+        svc = get_discount_service()
+        meta = svc.meta or {}
+        return {
+            "features": svc.features,
+            "threshold": svc.threshold,
+            "metadata": meta,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ml/discount-30d/reload")
+async def reload_discount_model():
+    """Reload the discount model artifact and clear cache (hot-reload)."""
+    try:
+        svc = get_discount_service()
+        svc.reload()
+        return {
+            "status": "reloaded",
+            "features": svc.features,
+            "threshold": svc.threshold,
+            "metadata": svc.meta,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/games/{appid}/price-history")
+async def price_history(appid: int, limit: int = 120):
+    try:
+        conn = get_mysql_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT date, finalprice, discount
+            FROM price_history
+            WHERE appid = %s AND finalprice IS NOT NULL
+            ORDER BY date DESC
+            LIMIT %s
+            """,
+            (appid, limit),
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        # return ascending order for charts
+        rows = list(reversed(rows))
+        return {"appid": appid, "history": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.get("/api/games/{appid}")
 async def get_game_details(appid: int):
