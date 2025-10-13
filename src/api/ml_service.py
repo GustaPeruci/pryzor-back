@@ -27,7 +27,18 @@ class RealMLPredictionService:
     
     def __init__(self, db_path: str, model_path: str = "steam_price_model.pkl"):
         self.db_path = db_path
-        self.model_path = os.path.join(os.path.dirname(__file__), "..", "ml_model", model_path)
+        # Resolve model path
+        # Priority: explicit env (MODEL_PATH) -> treat as file or directory; else repo root/ml_model/<file>
+        env_model_path = os.getenv("MODEL_PATH")
+        if env_model_path:
+            if os.path.isdir(env_model_path):
+                resolved = os.path.join(env_model_path, model_path)
+            else:
+                resolved = env_model_path
+        else:
+            resolved = os.path.join(project_root, "ml_model", model_path)
+
+        self.model_path = os.path.abspath(resolved)
         self.ml_pipeline = None
         self.model_loaded = False
         self._load_model()
@@ -95,16 +106,19 @@ class RealMLPredictionService:
                 cursor = conn.cursor()
                 
                 # Get game info
-                cursor.execute("SELECT name FROM games WHERE appid = ?", (appid,))
+                cursor.execute("SELECT name FROM games WHERE appid = %s", (appid,))
                 game_row = cursor.fetchone()
                 if not game_row:
                     return {'error': 'Game not found'}
                 
                 # Get price stats
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT AVG(Finalprice), AVG(Discount), COUNT(*)
-                    FROM price_history WHERE appid = ?
-                """, (appid,))
+                    FROM price_history WHERE appid = %s
+                    """,
+                    (appid,)
+                )
                 
                 stats_row = cursor.fetchone()
                 if not stats_row or stats_row[2] == 0:
