@@ -8,9 +8,11 @@ import sys
 import json
 from datetime import datetime
 from typing import Dict, List, Any, Optional
+import math
 
 import mysql.connector
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -27,9 +29,27 @@ app = FastAPI(
     version="5.0.0 - MySQL Production"
 )
 
+# Configure CORS with explicit allowed origins (wildcard + credentials can be problematic on browsers)
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+_env_origins = os.getenv("CORS_ORIGINS")
+if _env_origins:
+    try:
+        origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
+    except Exception:
+        origins = _default_origins
+else:
+    origins = _default_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -219,6 +239,123 @@ async def list_games(
             }
         }
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ml/discount-30d/metrics")
+async def discount_model_metrics():
+    """Expõe métricas e metadados do modelo atual para o frontend (sem binários)."""
+    try:
+        svc = get_discount_service()
+        meta = svc.meta or {}
+        return {
+            "threshold": svc.threshold,
+            "lookback_days": meta.get("lookback_days"),
+            "horizon_days": meta.get("horizon_days"),
+            "discount_threshold": meta.get("discount_threshold"),
+            "class_prevalence": meta.get("class_prevalence"),
+            "metrics": meta.get("metrics", {}),
+            "calibration": meta.get("calibration", {}),
+            "best_params": meta.get("best_params"),
+            "created_at": meta.get("created_at"),
+            "n_samples": meta.get("n_samples"),
+            "n_games": meta.get("n_games"),
+            "date_min": meta.get("date_min"),
+            "date_max": meta.get("date_max"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ml/discount-30d/inspect")
+async def discount_feature_inspect(appid: int):
+    """Retorna vetor de features; nunca lança 500 (erro vem no payload)."""
+    svc = get_discount_service()
+    try:
+        result = svc.inspect(appid)
+        # Se veio erro, garantir estrutura uniforme
+        if "error" in result:
+            return JSONResponse(content={
+                "appid": appid,
+                "features": {},
+                "feature_names": svc.features,
+                "as_of_date": result.get("as_of_date"),
+                "n_price_rows": result.get("n_price_rows", 0),
+                "error": result["error"],
+            })
+        # Caso sucesso
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={
+            "appid": appid,
+            "features": {},
+            "feature_names": svc.features,
+            "as_of_date": None,
+            "n_price_rows": 0,
+            "error": str(e)
+        })
+
+
+@app.get("/api/ml/discount-30d/feature-descriptions")
+async def discount_feature_descriptions():
+    """Descrições curtas das features para exibir no frontend (tooltip/legenda)."""
+    try:
+        # Dicionário mínimo; pode ser movido para arquivo JSON se crescer
+        desc = {
+            "price_ma7": "Média de preço 7d",
+            "price_ma14": "Média de preço 14d",
+            "price_ma30": "Média de preço 30d",
+            "price_ma60": "Média de preço 60d",
+            "price_ma90": "Média de preço 90d",
+            "price_std14": "Desvio padrão 14d",
+            "price_std30": "Desvio padrão 30d",
+            "price_std60": "Desvio padrão 60d",
+            "price_std90": "Desvio padrão 90d",
+            "price_ema7": "Média exponencial 7d",
+            "price_ema30": "Média exponencial 30d",
+            "price_z_ma30": "Z-score vs MA30",
+            "price_z_ma90": "Z-score vs MA90",
+            "price_slope7": "Inclinação 7d",
+            "price_slope30": "Inclinação 30d",
+            "price_slope90": "Inclinação 90d",
+            "price_var7": "Variância 7d",
+            "price_var30": "Variância 30d",
+            "price_var90": "Variância 90d",
+            "price_max30": "Máximo 30d",
+            "price_min30": "Mínimo 30d",
+            "price_max90": "Máximo 90d",
+            "price_min90": "Mínimo 90d",
+            "disc_freq7": "Frequência de desconto 7d",
+            "disc_freq14": "Frequência de desconto 14d",
+            "disc_freq30": "Frequência de desconto 30d",
+            "disc_freq60": "Frequência de desconto 60d",
+            "disc_freq90": "Frequência de desconto 90d",
+            "disc_mean30": "Desconto médio 30d",
+            "disc_mean90": "Desconto médio 90d",
+            "disc_max30": "Desconto máximo 30d",
+            "disc_max90": "Desconto máximo 90d",
+            "disc_strong_freq30": "Freq. descontos fortes (>=40%) 30d",
+            "disc_strong_freq90": "Freq. descontos fortes (>=40%) 90d",
+            "avg_gap_disc90": "Gap médio entre descontos (90d)",
+            "days_since_max_disc90": "Dias desde maior desconto (90d)",
+            "price_ma7_over_30": "Razão MA7/MA30",
+            "days_since_last_disc": "Dias desde último desconto",
+            "type_encoded": "Tipo do app (game/dlc/demo)",
+            "years_since_release": "Anos desde lançamento",
+            "season_winter": "Estação inverno",
+            "season_spring": "Estação primavera",
+            "season_summer": "Estação verão",
+            "season_fall": "Estação outono",
+            "sale_winter": "Janela de promo de inverno",
+            "sale_summer": "Janela de promo de verão",
+            "sale_autumn": "Janela de promo de outono",
+            "sale_lunar_new_year": "Janela de promo Ano Novo Lunar",
+            "sale_halloween": "Janela de promo Halloween",
+            "sale_spring": "Janela de promo Spring",
+            "sale_black_friday": "Janela de promo Black Friday",
+        }
+        return desc
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
