@@ -272,29 +272,8 @@ async def discount_model_metrics():
 async def discount_feature_inspect(appid: int):
     """Retorna vetor de features; nunca lança 500 (erro vem no payload)."""
     svc = get_discount_service()
-    try:
-        result = svc.inspect(appid)
-        # Se veio erro, garantir estrutura uniforme
-        if "error" in result:
-            return JSONResponse(content={
-                "appid": appid,
-                "features": {},
-                "feature_names": svc.features,
-                "as_of_date": result.get("as_of_date"),
-                "n_price_rows": result.get("n_price_rows", 0),
-                "error": result["error"],
-            })
-        # Caso sucesso
-        return JSONResponse(content=result)
-    except Exception as e:
-        return JSONResponse(content={
-            "appid": appid,
-            "features": {},
-            "feature_names": svc.features,
-            "as_of_date": None,
-            "n_price_rows": 0,
-            "error": str(e)
-        })
+    result = svc.inspect(appid)
+    return JSONResponse(content=result)
 
 
 @app.get("/api/ml/discount-30d/feature-descriptions")
