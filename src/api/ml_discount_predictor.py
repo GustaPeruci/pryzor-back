@@ -116,8 +116,7 @@ class MLDiscountPredictor:
             query = """
                 SELECT 
                     date,
-                    initialprice,
-                    finalprice,
+                    final_price,
                     discount
                 FROM price_history
                 WHERE appid = %s
@@ -187,7 +186,7 @@ class MLDiscountPredictor:
             
             features = {
                 'discount_percent': float(latest['discount']),
-                'final_price': float(latest['finalprice']),
+                'final_price': float(latest['final_price']),
                 'month': latest_date.month,
                 'quarter': (latest_date.month - 1) // 3 + 1,
                 'day_of_week': latest_date.dayofweek,
@@ -293,14 +292,23 @@ class MLDiscountPredictor:
             elif features_dict['is_winter_sale']:
                 reasoning.append("Período de Winter Sale (dezembro/janeiro)")
             
+            # Determinar recomendação baseada na probabilidade
             if prob_discount > 0.7:
-                recommendation = "AGUARDAR - Alta probabilidade de desconto melhor nos próximos 30 dias"
+                recommendation = "WAIT"
+                recommendation_text = "Alta probabilidade de desconto melhor nos próximos 30 dias"
+                reasoning.append(f"Probabilidade de {prob_discount*100:.0f}% de desconto >20%")
             elif prob_discount > 0.5:
-                recommendation = "CONSIDERAR AGUARDAR - Probabilidade moderada de desconto nos próximos 30 dias"
+                recommendation = "WAIT"
+                recommendation_text = "Probabilidade moderada de desconto nos próximos 30 dias"
+                reasoning.append(f"Probabilidade de {prob_discount*100:.0f}% de desconto >20%")
             elif current_discount > 50:
-                recommendation = "COMPRAR AGORA - Desconto atual é excelente"
+                recommendation = "BUY"
+                recommendation_text = "Desconto atual é excelente"
+                reasoning.append(f"Desconto de {current_discount:.0f}% já está ótimo")
             else:
-                recommendation = "COMPRAR SE QUISER - Baixa probabilidade de desconto melhor em breve"
+                recommendation = "BUY"
+                recommendation_text = "Baixa probabilidade de desconto melhor em breve"
+                reasoning.append(f"Apenas {prob_discount*100:.0f}% de chance de desconto >20%")
             
             return {
                 'appid': appid,
@@ -309,8 +317,10 @@ class MLDiscountPredictor:
                 'probability': float(prob_discount),
                 'confidence': float(confidence),
                 'current_discount': float(current_discount),
-                'current_price': float(price_history.iloc[-1]['finalprice']),
+                'current_price': float(price_history.iloc[-1]['final_price']),
+                'last_price_date': price_history.iloc[-1]['date'].strftime('%Y-%m-%d'),
                 'recommendation': recommendation,
+                'recommendation_text': recommendation_text,
                 'reasoning': reasoning,
                 'model_version': self.version,
                 'prediction_date': datetime.now().isoformat()

@@ -2,7 +2,7 @@
 *.pyc
 
 # Data files (large datasets)
-data/*.csv
+
 data/*.pkl
 
 # ML models (large files, except final production model)
