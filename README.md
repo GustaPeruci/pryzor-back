@@ -64,7 +64,7 @@ pryzor-back/
 
 Você vai precisar de:
 - Python 3.8 ou superior
-- MySQL 8.0 (com um banco criado)
+- MySQL 8.0 rodando
 - 5 minutos de paciência 😊
 
 ### Passo 1: Ambiente virtual
@@ -122,57 +122,196 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 
 ---
 
-## 📡 Endpoints (O que a API faz)
+### 🗄️ Setup do Banco de Dados (Primeira vez)
 
-### Sistema e Health Check
+Se é a primeira vez rodando o projeto, você precisa criar o banco e importar os dados:
 
-**GET /** - Informações básicas da API  
-Retorna nome, versão e links úteis.
+#### 1. Criar banco e tabelas (em outro terminal)
 
-**GET /health** - Verifica se tudo está ok  
-Retorna status da API, banco de dados e modelo ML.
+```powershell
+# PowerShell
+Invoke-RestMethod -Uri "http://localhost:8000/api/admin/setup-database" -Method POST
+```
 
-**GET /api/stats** - Estatísticas gerais  
-Quantos jogos tem no banco, quantos registros de preços, preço médio, etc.
+```bash
+# Bash/Linux
+curl -X POST http://localhost:8000/api/admin/setup-database
+```
 
-### Jogos (Dados)
+✅ Aguarde a mensagem de sucesso: "Banco de dados criado com sucesso!"
 
-**GET /api/games** - Lista jogos  
-Parâmetros:
-- `limit` - quantos jogos retornar (padrão: 50)
-- `offset` - paginação (padrão: 0)
-- `search` - buscar por nome
+#### 2. Importar dataset completo
 
-Exemplo: `/api/games?search=Counter&limit=10`
+⚠️ **IMPORTANTE:** Certifique-se que os arquivos CSV estão na pasta `data/`:
+- `data/applicationInformation.csv`
+- `data/PriceHistory/*.csv` (vários arquivos)
 
-**GET /api/games/{appid}** - Detalhes de um jogo  
-Retorna info completa + histórico de preços dos últimos 30 dias.
+```powershell
+# PowerShell
+Invoke-RestMethod -Uri "http://localhost:8000/api/admin/import-dataset" -Method POST
+```
 
-Exemplo: `/api/games/730` (Counter-Strike: Global Offensive)
+```bash
+# Bash/Linux
+curl -X POST http://localhost:8000/api/admin/import-dataset
+```
 
-### Machine Learning (Previsões)
+⏳ **Aguarde 5-10 minutos** - o processo importa ~2000 jogos e ~500k registros de preço
 
-**GET /api/ml/info** - Informações sobre o modelo  
-Versão, métricas (F1, Precision, Recall), quando foi treinado, etc.
+#### 3. Verificar se deu certo
 
-**GET /api/ml/health** - Status do serviço ML  
-Verifica se o modelo está carregado e funcionando.
+```powershell
+# Ver estatísticas do banco
+Invoke-RestMethod -Uri "http://localhost:8000/api/stats" -Method GET
+```
 
-**GET /api/ml/predict/{appid}** - Faz previsão para um jogo  
-Retorna:
-- Se vai ter desconto (true/false)
-- Probabilidade (0-1)
-- Confiança da previsão
-- Recomendação ("AGUARDAR", "COMPRAR AGORA", etc)
+Você deve ver algo como:
+```json
+{
+  "total_games": 2002,
+  "total_price_records": 500000,
+  "average_price": 15.99
+}
+```
 
-Exemplo: `/api/ml/predict/271590` (GTA V)
+✅ **Pronto!** O banco está populado e o sistema está pronto para uso.
 
-**POST /api/ml/predict/batch** - Previsão em lote  
-Envia até 50 appids de uma vez e recebe todas as previsões.
+---
 
+## 📡 API Endpoints (Todos os 11 endpoints)
+
+### 🏠 Sistema e Health Check
+
+#### **GET /**
+**Descrição:** Informações básicas da API  
+**Retorna:** Nome, versão, links úteis e endpoints disponíveis  
+**Exemplo:** http://127.0.0.1:8000/
+
+#### **GET /health**
+**Descrição:** Verifica se tudo está ok  
+**Retorna:** Status da API, banco de dados e modelo ML  
+**Exemplo:** http://127.0.0.1:8000/health
+
+#### **GET /api/stats**
+**Descrição:** Estatísticas gerais do sistema  
+**Retorna:** Total de jogos, registros de preços, preço médio, min/max  
+**Exemplo:** http://127.0.0.1:8000/api/stats
+
+---
+
+### 🎮 Jogos (Dados)
+
+#### **GET /api/games**
+**Descrição:** Lista jogos com paginação e busca  
+**Parâmetros:**
+- `limit` (int) - quantos jogos retornar (padrão: 50)
+- `offset` (int) - paginação (padrão: 0)
+- `search` (string) - buscar por nome
+
+**Exemplo:** `/api/games?search=Counter&limit=10`
+
+#### **GET /api/games/{appid}**
+**Descrição:** Detalhes completos de um jogo específico  
+**Retorna:** Info do jogo + histórico de preços dos últimos 30 dias  
+**Exemplo:** `/api/games/730` (Counter-Strike: Global Offensive)
+
+---
+
+### 🧠 Machine Learning (Previsões)
+
+#### **GET /api/ml/info**
+**Descrição:** Informações sobre o modelo ML  
+**Retorna:** Versão, métricas (F1, Precision, Recall), data de treino, features  
+**Exemplo:** `/api/ml/info`
+
+#### **GET /api/ml/health**
+**Descrição:** Status do serviço ML  
+**Retorna:** Se o modelo está carregado e operacional  
+**Exemplo:** `/api/ml/health`
+
+#### **GET /api/ml/predict/{appid}**
+**Descrição:** Faz previsão de desconto para um jogo  
+**Retorna:**
+- `will_have_discount` - se vai ter desconto >20%
+- `probability` - probabilidade (0-1)
+- `confidence` - confiança na predição
+- `recommendation` - "BUY" ou "WAIT"
+- `recommendation_text` - texto explicativo
+- `reasoning` - fatores que influenciaram
+
+**Exemplo:** `/api/ml/predict/271590` (GTA V)
+
+#### **POST /api/ml/predict/batch**
+**Descrição:** Previsão em lote (até 50 jogos)  
+**Body:**
 ```json
 {
   "appids": [730, 440, 570]
+}
+```
+**Retorna:** Array com todas as predições
+
+---
+
+### 🔧 Admin (Setup e Importação)
+
+#### **POST /api/admin/setup-database**
+**Descrição:** Cria banco de dados e tabelas necessárias  
+**Retorna:** Confirmação de criação com detalhes  
+**Uso:** Execute este endpoint ANTES de importar dados
+
+**PowerShell:**
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/api/admin/setup-database" -Method POST
+```
+
+**Resposta de sucesso:**
+```json
+{
+  "status": "success",
+  "message": "Banco de dados criado com sucesso!",
+  "details": {
+    "database": "steam_pryzor",
+    "tables_created": ["games", "price_history"]
+  }
+}
+```
+
+#### **POST /api/admin/import-dataset**
+**Descrição:** Importa CSV dataset completo para o banco  
+**Requisitos:** 
+- Arquivo `data/applicationInformation.csv` presente
+- Pasta `data/PriceHistory/` com CSVs de preços
+- Banco já criado com `/api/admin/setup-database`
+
+**Retorna:** Estatísticas de importação (jogos importados, registros de preço, etc)
+
+**PowerShell:**
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/api/admin/import-dataset" -Method POST
+```
+
+**⚠️ IMPORTANTE:** 
+- Este processo pode levar 5-10 minutos
+- Importa ~2000 jogos e ~500k registros de preço
+- É idempotente (pode executar múltiplas vezes sem duplicar dados)
+
+**Resposta de sucesso:**
+```json
+{
+  "status": "success",
+  "message": "Dataset importado com sucesso!",
+  "details": {
+    "games": {
+      "imported": 2002,
+      "total_in_db": 2002
+    },
+    "price_history": {
+      "files_processed": 1850,
+      "records_imported": 500000,
+      "total_in_db": 500000
+    }
+  }
 }
 ```
 
