@@ -1,2 +1,30 @@
 # Environment files
 *.pyc
+
+# Data files (large datasets)
+data/*.csv
+data/*.pkl
+
+# ML models (large files, except final production model)
+ml_model/*.pkl
+!ml_model/discount_predictor.pkl
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
