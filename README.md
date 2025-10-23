@@ -20,6 +20,9 @@ Este é o backend do projeto. Se você já leu o README principal, sabe que o Pr
 - **Precision:** 90.46% - quando prevê desconto, acerta 9 em 10 vezes
 - **F1-Score:** 74.34% - balanço entre acertos e cobertura
 - **Recall:** 63.09% - captura 63% dos descontos reais
+- **Validação real:** 92.4% de acurácia em 1.000 jogos testados
+
+**📖 Histórico completo:** Veja `ml_model/README.md` para detalhes do modelo v2.0 e `ml_model/experiments_failed/` para análise dos experimentos v2.1 e v3.0 que falharam.
 
 ---
 
@@ -41,7 +44,12 @@ pryzor-back/
 │   └── README.md                    # Documentação dos scripts
 │
 ├── 📂 ml_model/                     # Modelos treinados
-│   └── discount_predictor.pkl       # Modelo RandomForest v2.0 (26.6 MB)
+│   ├── discount_predictor.pkl       # Modelo v2.0 ATIVO (2.5 MB)
+│   ├── README.md                    # Documentação do modelo em produção
+│   └── 📂 experiments_failed/       # Experimentos descartados (v2.1, v3.0)
+│       ├── discount_predictor_v2_1.pkl
+│       ├── 03_train_model_v2_1.py
+│       └── README.md                # Por que os experimentos falharam
 │
 ├── 📂 data/                         # Datasets
 │   └── data_with_binary_target.csv  # Dataset para treinamento (679k registros)
