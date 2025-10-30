@@ -399,7 +399,19 @@ def main():
     model = train_model(X_train, y_train)
     
     # 5. Avaliar modelo
+    print("\n📊 MATRIZ DE CONFUSÃO - TREINO")
+    y_train_pred = model.predict(X_train)
+    cm_train = confusion_matrix(y_train, y_train_pred)
+    print(cm_train)
+    print()
+
     metrics = evaluate_model(model, X_test, y_test, feature_names)
+
+    print("\n📊 MATRIZ DE CONFUSÃO - TESTE")
+    y_test_pred = model.predict(X_test)
+    cm_test = confusion_matrix(y_test, y_test_pred)
+    print(cm_test)
+    print()
     
     # 6. Salvar modelo
     save_model(model, feature_names, metrics, model_file)
