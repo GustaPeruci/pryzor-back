@@ -20,6 +20,30 @@
 | **Recall** | 63.09% | Captura 63% das oportunidades reais |
 | **ROC-AUC** | 79.45% | Boa capacidade de discriminação |
 
+---
+### Resultados do Treinamento (Out/2025)
+
+**Dataset:** 725.268 registros
+**Split temporal:** Treino até 2020-04-01, Teste após
+
+**Métricas no Teste (194.017 registros):**
+- Accuracy: 77.93%
+- Precision: 90.26%
+- Recall: 60.55%
+- F1-Score: 72.48%
+- ROC-AUC: 81.83%
+
+**Matriz de Confusão (Teste):**
+|        | Prevê NÃO | Prevê SIM |
+|--------|-----------|-----------|
+| Real NÃO | 94.808    | 6.086     |
+| Real SIM | 36.736    | 56.387    |
+
+**Principais Features:**
+- discount_percent, month, quarter, final_price, is_summer_sale, is_winter_sale, day_of_week, is_weekend
+
+**Recomendação:** Modelo v2.0 é robusto, confiável e pronto para produção. Foco em ML validado para TCC.
+
 ### Validação Real (1.000 jogos aleatórios)
 
 | Cenário | Acurácia | Observação |
