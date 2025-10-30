@@ -18,11 +18,24 @@ if env_file.exists():
                 config[key] = value
 
 # Configurações do MySQL
-MYSQL_HOST = config.get('MYSQL_HOST', 'localhost')
+# MYSQL_HOST = config.get('MYSQL_HOST', 'localhost')
+# MYSQL_PORT = int(config.get('MYSQL_PORT', 3306))
+# MYSQL_USER = config.get('MYSQL_USER', 'root')
+# MYSQL_PASSWORD = config.get('MYSQL_PASSWORD', 'root')
+# MYSQL_DATABASE = config.get('MYSQL_DATABASE', 'steam_pryzor')
+
+MYSQL_HOST = config.get('MYSQL_HOST', 'db4free.net')
 MYSQL_PORT = int(config.get('MYSQL_PORT', 3306))
-MYSQL_USER = config.get('MYSQL_USER', 'root')
-MYSQL_PASSWORD = config.get('MYSQL_PASSWORD', 'root')
-MYSQL_DATABASE = config.get('MYSQL_DATABASE', 'steam_pryzor')
+MYSQL_USER = config.get('MYSQL_USER', 'root_gcpa')
+MYSQL_PASSWORD = config.get('MYSQL_PASSWORD', 'Q%aQCwa5acjY75z')
+MYSQL_DATABASE = config.get('MYSQL_DATABASE', 'Q%aQCwa5acjY75z')
+
+# DATABASE_URL=mysql+pymysql://root_gcpa:Q%aQCwa5acjY75z @db4free.net:3306/steam_pryzor
+# MYSQL_HOST=db4free.net
+# MYSQL_PORT=3306
+# MYSQL_USER=root_gcpa
+# MYSQL_PASSWORD=Q%aQCwa5acjY75z
+# MYSQL_DATABASE=Q%aQCwa5acjY75z
 
 def create_database():
     """Cria o banco de dados e as tabelas"""
