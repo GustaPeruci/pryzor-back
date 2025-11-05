@@ -6,6 +6,8 @@ Cria as tabelas e insere dados mínimos se necessário
 from database.connection import SessionLocal, engine
 # Importar TODOS os modelos para que o Base.metadata os conheça
 from database.models import Base, Game, PriceHistory, PricePrediction, ModelMetadata, DataProcessingLog
+import pandas as pd
+from pathlib import Path
 
 # Cria todas as tabelas
 print("Criando tabelas no banco de dados...")
@@ -35,6 +37,25 @@ try:
             print("Jogos mínimos inseridos.")
         else:
             print("Jogos já existem no banco.")
+
+        # Importar histórico de preços do dataset gerado
+        price_csv = Path(__file__).parent.parent / "data" / "data_with_binary_target.csv"
+        if price_csv.exists():
+            print("Importando registros de preço do dataset...")
+            df = pd.read_csv(price_csv)
+            for _, row in df.iterrows():
+                ph = PriceHistory(
+                    appid=int(row['appid']),
+                    date=pd.to_datetime(row['date']),
+                    initial_price=float(row['initial_price']),
+                    final_price=float(row['final_price']),
+                    discount=int(row['discount'])
+                )
+                session.add(ph)
+            session.commit()
+            print(f"Registros de preço importados: {len(df)}")
+        else:
+            print("Arquivo data_with_binary_target.csv não encontrado. Nenhum registro de preço importado.")
 except Exception as e:
     print(f"Erro ao inserir dados: {e}")
     raise

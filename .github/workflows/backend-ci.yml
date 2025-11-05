@@ -26,6 +26,8 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Preparar dataset com histórico de preços
+        run: python scripts/prepare_binary_target.py
       - name: Inicializar banco de dados
         run: PYTHONPATH=src python scripts/init_db.py
         env:
