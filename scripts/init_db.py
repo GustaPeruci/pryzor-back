@@ -45,7 +45,14 @@ try:
             print("Importando registros de preço do dataset...")
             df = pd.read_csv(price_csv)
             # Carregar informações dos jogos
-            app_info = pd.read_csv(app_info_csv)
+            # Tenta múltiplos encodings para ler o CSV
+            try:
+                app_info = pd.read_csv(app_info_csv, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    app_info = pd.read_csv(app_info_csv, encoding='latin-1')
+                except:
+                    app_info = pd.read_csv(app_info_csv, encoding='cp1252')
             app_info = app_info.set_index('appid')
             # Garantir que todos appids do dataset estejam na tabela games
             appids_precos = set(df['appid'].unique())
