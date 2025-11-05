@@ -65,11 +65,17 @@ try:
                     nome = row['name'] if 'name' in row else f"Jogo {appid}"
                     tipo = row['type'] if 'type' in row else "game"
                     free = bool(row['freetoplay']) if 'freetoplay' in row and not pd.isnull(row['freetoplay']) else False
+                    # release_date: se não existir ou for NaN, coloca None
+                    if 'releasedate' in row and not pd.isnull(row['releasedate']):
+                        release_date = str(row['releasedate'])
+                    else:
+                        release_date = None
                 else:
                     nome = f"Jogo {appid}"
                     tipo = "game"
                     free = False
-                novos_jogos.append(Game(appid=appid, name=nome, type=tipo, free_to_play=free))
+                    release_date = None
+                novos_jogos.append(Game(appid=appid, name=nome, type=tipo, free_to_play=free, release_date=release_date))
             if novos_jogos:
                 print(f"Inserindo {len(novos_jogos)} novos jogos do dataset...")
                 session.add_all(novos_jogos)
