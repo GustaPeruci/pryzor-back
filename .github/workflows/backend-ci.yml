@@ -37,6 +37,15 @@ jobs:
           sleep 5
         env:
           DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/pryzor
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: root
+          MYSQL_PASSWORD: root
           MYSQL_DATABASE: pryzor
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: pryzor
       - name: Run tests
         run: PYTHONPATH=src pytest tests
