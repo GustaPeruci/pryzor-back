@@ -14,31 +14,26 @@ def print_section(title):
     print(f"  {title}")
     print("=" * 80)
 
-def test_endpoint(name, url, method="GET", data=None):
-    """Testa um endpoint e imprime o resultado"""
+
+# Função auxiliar para testar endpoints
+def endpoint_test(name, url, method="GET", data=None):
     print(f"\n📡 {name}")
     print(f"   {method} {url}")
-    
     try:
         if method == "GET":
             response = requests.get(url, timeout=5)
         elif method == "POST":
             response = requests.post(url, json=data, timeout=5)
-        
         print(f"   Status: {response.status_code} {'✅' if response.status_code < 400 else '❌'}")
-        
         if response.status_code == 200:
             result = response.json()
-            # Limitar tamanho da saída
             result_str = json.dumps(result, indent=2, ensure_ascii=False)
             if len(result_str) > 500:
                 result_str = result_str[:500] + "\n   ... (truncado)"
             print(f"   Resposta:\n{result_str}")
         else:
             print(f"   Erro: {response.text[:200]}")
-        
         return response.status_code == 200
-        
     except requests.exceptions.ConnectionError:
         print("   ❌ ERRO: API não está rodando!")
         print("   Execute: python src/main.py")
@@ -60,73 +55,53 @@ def main():
     
     print_section("1. ENDPOINTS DO SISTEMA")
     
-    results.append(("GET /", test_endpoint(
+    results.append(("GET /", endpoint_test(
         "Raiz da API",
         f"{API_BASE}/"
     )))
-    
-    results.append(("GET /health", test_endpoint(
+    results.append(("GET /health", endpoint_test(
         "Health Check",
         f"{API_BASE}/health"
     )))
-    
-    results.append(("GET /api/stats", test_endpoint(
+    results.append(("GET /api/stats", endpoint_test(
         "Estatísticas do Sistema",
         f"{API_BASE}/api/stats"
     )))
-    
-    # ========================================================================
-    # TESTES - DADOS
-    # ========================================================================
-    
     print_section("2. ENDPOINTS DE DADOS")
-    
-    results.append(("GET /api/games", test_endpoint(
+    results.append(("GET /api/games", endpoint_test(
         "Listar Jogos (limit=5)",
         f"{API_BASE}/api/games?limit=5"
     )))
-    
-    results.append(("GET /api/games (busca)", test_endpoint(
+    results.append(("GET /api/games (busca)", endpoint_test(
         "Buscar Jogos (search='Counter')",
         f"{API_BASE}/api/games?search=Counter&limit=3"
     )))
-    
-    results.append(("GET /api/games/730", test_endpoint(
+    results.append(("GET /api/games/730", endpoint_test(
         "Detalhes do CS:GO (appid=730)",
         f"{API_BASE}/api/games/730"
     )))
-    
-    # ========================================================================
-    # TESTES - MACHINE LEARNING
-    # ========================================================================
-    
     print_section("3. ENDPOINTS DE MACHINE LEARNING")
-    
-    results.append(("GET /api/ml/health", test_endpoint(
+    results.append(("GET /api/ml/health", endpoint_test(
         "Health Check ML",
         f"{API_BASE}/api/ml/health"
     )))
-    
-    results.append(("GET /api/ml/info", test_endpoint(
+    results.append(("GET /api/ml/info", endpoint_test(
         "Informações do Modelo",
         f"{API_BASE}/api/ml/info"
     )))
-    
-    results.append(("GET /api/ml/predict/730", test_endpoint(
+    results.append(("GET /api/ml/predict/730", endpoint_test(
         "Predição CS:GO (appid=730)",
         f"{API_BASE}/api/ml/predict/730"
     )))
-    
-    results.append(("GET /api/ml/predict/271590", test_endpoint(
+    results.append(("GET /api/ml/predict/271590", endpoint_test(
         "Predição GTA V (appid=271590)",
         f"{API_BASE}/api/ml/predict/271590"
     )))
-    
-    results.append(("POST /api/ml/predict/batch", test_endpoint(
+    results.append(("POST /api/ml/predict/batch", endpoint_test(
         "Predição em Lote (3 jogos)",
         f"{API_BASE}/api/ml/predict/batch",
         method="POST",
-        data={"appids": [730, 440, 570]}  # CS:GO, TF2, Dota 2
+        data={"appids": [730, 440, 570]}
     )))
     
     # ========================================================================
