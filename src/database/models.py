@@ -3,9 +3,9 @@ Modelos SQLAlchemy para o Pryzor - MySQL Only
 Production MySQL database models
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Text, DateTime, Index
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Text, DateTime, Date, Index, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from .config import get_connection_string, is_mysql
