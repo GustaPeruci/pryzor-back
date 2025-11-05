@@ -242,7 +242,6 @@ async def list_games(
                 g.type, 
                 g.release_date, 
                 g.free_to_play,
-                g.price_records,
                 (
                     SELECT ph.final_price 
                     FROM price_history ph 
