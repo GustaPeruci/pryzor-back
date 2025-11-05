@@ -60,32 +60,52 @@ try:
             novos_appids = appids_precos - appids_existentes
             novos_jogos = []
             for appid in novos_appids:
+                import math
                 if appid in app_info.index:
                     row = app_info.loc[appid]
-                    nome = row['name'] if 'name' in row else f"Jogo {appid}"
-                    tipo = row['type'] if 'type' in row else "game"
-                    free = bool(row['freetoplay']) if 'freetoplay' in row and not pd.isnull(row['freetoplay']) else False
+                    nome = row['name'] if 'name' in row and not pd.isnull(row['name']) else f"Jogo {appid}"
+                    if isinstance(nome, float) and math.isnan(nome):
+                        nome = f"Jogo {appid}"
+                    tipo = row['type'] if 'type' in row and not pd.isnull(row['type']) else "game"
+                    if isinstance(tipo, float) and math.isnan(tipo):
+                        tipo = "game"
+                    free = row['freetoplay'] if 'freetoplay' in row and not pd.isnull(row['freetoplay']) else 0
+                    try:
+                        free = int(free)
+                    except Exception:
+                        free = 0
                     # release_date: tenta converter para YYYY-MM-DD
                     release_date = None
                     if 'releasedate' in row and not pd.isnull(row['releasedate']):
                         raw_date = str(row['releasedate'])
-                        try:
-                            # Tenta formatos comuns
-                            from datetime import datetime
-                            for fmt in ("%d-%b-%y", "%d-%b-%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d-%m-%y"): 
-                                try:
-                                    release_date = datetime.strptime(raw_date, fmt).strftime("%Y-%m-%d")
-                                    break
-                                except ValueError:
-                                    continue
-                        except Exception:
+                        if raw_date.lower() == 'nan' or raw_date.strip() == '':
                             release_date = None
+                        else:
+                            try:
+                                from datetime import datetime
+                                for fmt in ("%d-%b-%y", "%d-%b-%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d-%m-%y"): 
+                                    try:
+                                        release_date = datetime.strptime(raw_date, fmt).strftime("%Y-%m-%d")
+                                        break
+                                    except ValueError:
+                                        continue
+                            except Exception:
+                                release_date = None
                 else:
                     nome = f"Jogo {appid}"
                     tipo = "game"
-                    free = False
+                    free = 0
                     release_date = None
-                novos_jogos.append(Game(appid=appid, name=nome, type=tipo, free_to_play=free, release_date=release_date))
+                # Garantir que nenhum campo seja NaN ou tipo inválido
+                if nome is None or (isinstance(nome, float) and math.isnan(nome)):
+                    nome = f"Jogo {appid}"
+                if tipo is None or (isinstance(tipo, float) and math.isnan(tipo)):
+                    tipo = "game"
+                if release_date is not None and (isinstance(release_date, float) and math.isnan(release_date)):
+                    release_date = None
+                if free is None or (isinstance(free, float) and math.isnan(free)):
+                    free = 0
+                novos_jogos.append(Game(appid=int(appid), name=str(nome), type=str(tipo), free_to_play=int(free), release_date=release_date))
             if novos_jogos:
                 print(f"Inserindo {len(novos_jogos)} novos jogos do dataset...")
                 session.add_all(novos_jogos)
