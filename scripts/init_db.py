@@ -40,9 +40,34 @@ try:
 
         # Importar histórico de preços do dataset gerado
         price_csv = Path(__file__).parent.parent / "data" / "data_with_binary_target.csv"
+        app_info_csv = Path(__file__).parent.parent / "data" / "applicationInformation.csv"
         if price_csv.exists():
             print("Importando registros de preço do dataset...")
             df = pd.read_csv(price_csv)
+            # Carregar informações dos jogos
+            app_info = pd.read_csv(app_info_csv)
+            app_info = app_info.set_index('appid')
+            # Garantir que todos appids do dataset estejam na tabela games
+            appids_precos = set(df['appid'].unique())
+            appids_existentes = set([g.appid for g in session.query(Game.appid).all()])
+            novos_appids = appids_precos - appids_existentes
+            novos_jogos = []
+            for appid in novos_appids:
+                if appid in app_info.index:
+                    row = app_info.loc[appid]
+                    nome = row['name'] if 'name' in row else f"Jogo {appid}"
+                    tipo = row['type'] if 'type' in row else "game"
+                    free = bool(row['freetoplay']) if 'freetoplay' in row and not pd.isnull(row['freetoplay']) else False
+                else:
+                    nome = f"Jogo {appid}"
+                    tipo = "game"
+                    free = False
+                novos_jogos.append(Game(appid=appid, name=nome, type=tipo, free_to_play=free))
+            if novos_jogos:
+                print(f"Inserindo {len(novos_jogos)} novos jogos do dataset...")
+                session.add_all(novos_jogos)
+                session.commit()
+            # Agora insere PriceHistory
             for _, row in df.iterrows():
                 ph = PriceHistory(
                     appid=int(row['appid']),
