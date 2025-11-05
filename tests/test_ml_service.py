@@ -95,38 +95,30 @@ def test_direct_service():
 def test_api_endpoints():
     """Testa os endpoints da API"""
     print_section("TESTE 2: Endpoints da API")
-    
-    print("\n⚠️ CERTIFIQUE-SE de que a API está rodando: python pryzor-back/src/main.py")
-    input("Pressione ENTER quando a API estiver rodando...")
-    
+    # CI/CD: Não usar input(), apenas tentar conectar
     try:
         # Teste 2.1: Health check
         print("\n🔍 Testando /api/ml/v2/health...")
         response = requests.get(f"{API_BASE_URL}/api/ml/v2/health", timeout=5)
-        
         if response.status_code == 200:
             data = response.json()
-            print_result("Health check", data['model_loaded'], 
-                        f"Status: {data['status']}, v{data['version']}")
+            print_result("Health check", data['model_loaded'], f"Status: {data['status']}, v{data['version']}")
         else:
             print_result("Health check", False, f"Status code: {response.status_code}")
             return False
-        
+
         # Teste 2.2: Model info
         print("\n🔍 Testando /api/ml/v2/info...")
         response = requests.get(f"{API_BASE_URL}/api/ml/v2/info", timeout=5)
-        
         if response.status_code == 200:
             data = response.json()
-            print_result("Model info", True, 
-                        f"F1={data['metrics']['f1_score']:.4f}, Precision={data['metrics']['precision']:.4f}")
+            print_result("Model info", True, f"F1={data['metrics']['f1_score']:.4f}, Precision={data['metrics']['precision']:.4f}")
         else:
             print_result("Model info", False, f"Status code: {response.status_code}")
-        
+
         # Teste 2.3: Predição única
         print("\n🔍 Testando /api/ml/v2/predict/730 (CS:GO)...")
         response = requests.get(f"{API_BASE_URL}/api/ml/v2/predict/730", timeout=10)
-        
         if response.status_code == 200:
             data = response.json()
             print_result("Predição única", True)
@@ -135,28 +127,25 @@ def test_api_endpoints():
             print(f"   Recomendação: {data['recommendation']}")
         else:
             print_result("Predição única", False, f"Status code: {response.status_code}")
-        
+
         # Teste 2.4: Predição em lote
         print("\n🔍 Testando /api/ml/v2/predict/batch...")
         payload = {"appids": [730, 440, 570]}
-        response = requests.post(f"{API_BASE_URL}/api/ml/v2/predict/batch", 
-                               json=payload, timeout=15)
-        
+        response = requests.post(f"{API_BASE_URL}/api/ml/v2/predict/batch", json=payload, timeout=15)
         if response.status_code == 200:
             data = response.json()
-            print_result("Predição em lote", True, 
-                        f"{data['successful']}/{data['total_requested']} sucessos")
-            
+            print_result("Predição em lote", True, f"{data['successful']}/{data['total_requested']} sucessos")
             for pred in data['predictions'][:3]:
                 print(f"   • {pred['game_name']}: {pred['probability']:.2%}")
         else:
             print_result("Predição em lote", False, f"Status code: {response.status_code}")
-        
+
         return True
-        
+
     except requests.exceptions.ConnectionError:
         print_result("API Endpoints", False, "Não foi possível conectar à API. Ela está rodando?")
-        return False
+        assert False, "A API não está rodando em http://127.0.0.1:8000 durante o teste automatizado. Suba a API antes de rodar os testes."
+
     except Exception as e:
         print_result("API Endpoints", False, f"Exceção: {e}")
         import traceback
