@@ -157,13 +157,10 @@ def main():
     
     return passed == total
 
-if __name__ == "__main__":
-    print("\n⚠️ CERTIFIQUE-SE DE QUE A API ESTÁ RODANDO!")
-    print("   Execute em outro terminal: python src/main.py\n")
-    
-    input("Pressione ENTER quando a API estiver rodando...")
-    
+
+# Teste automatizado para CI/CD
+def test_api_endpoints():
+    """Testa todos os endpoints principais da API automaticamente."""
+    # Opcional: pode adicionar lógica para subir a API em modo de teste (ex: subprocess), mas aqui assume que está rodando
     success = main()
-    
-    if not success:
-        print("\n💡 DICA: Verifique se a API está rodando e acessível em http://localhost:8000")
+    assert success, "Nem todos os endpoints da API responderam corretamente. Certifique-se de que a API está rodando em http://localhost:8000 durante o CI/CD."
