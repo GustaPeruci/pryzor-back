@@ -65,11 +65,21 @@ try:
                     nome = row['name'] if 'name' in row else f"Jogo {appid}"
                     tipo = row['type'] if 'type' in row else "game"
                     free = bool(row['freetoplay']) if 'freetoplay' in row and not pd.isnull(row['freetoplay']) else False
-                    # release_date: se não existir ou for NaN, coloca None
+                    # release_date: tenta converter para YYYY-MM-DD
+                    release_date = None
                     if 'releasedate' in row and not pd.isnull(row['releasedate']):
-                        release_date = str(row['releasedate'])
-                    else:
-                        release_date = None
+                        raw_date = str(row['releasedate'])
+                        try:
+                            # Tenta formatos comuns
+                            from datetime import datetime
+                            for fmt in ("%d-%b-%y", "%d-%b-%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d-%m-%y"): 
+                                try:
+                                    release_date = datetime.strptime(raw_date, fmt).strftime("%Y-%m-%d")
+                                    break
+                                except ValueError:
+                                    continue
+                        except Exception:
+                            release_date = None
                 else:
                     nome = f"Jogo {appid}"
                     tipo = "game"
