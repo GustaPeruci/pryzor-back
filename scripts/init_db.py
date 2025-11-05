@@ -3,13 +3,14 @@ Script para inicializar o banco de dados MySQL no CI/CD
 Cria as tabelas e insere dados mínimos se necessário
 """
 
-from database.connection import create_database
-from database.models import Game
+from database.connection import SessionLocal, engine
+from database.models import Base, Game
 from sqlalchemy.orm import Session
-from database.connection import SessionLocal
 
 # Cria todas as tabelas
-create_database()
+print("Criando tabelas no banco de dados...")
+Base.metadata.create_all(bind=engine)
+print("Tabelas criadas com sucesso!")
 
 # Insere dados mínimos se não existirem
 with SessionLocal() as session:
