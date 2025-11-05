@@ -27,7 +27,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Inicializar banco de dados
-        working-directory: pryzor-back
         run: PYTHONPATH=src python scripts/init_db.py
       - name: Start FastAPI server
         run: |
