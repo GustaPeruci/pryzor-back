@@ -220,7 +220,7 @@ async def list_games(
             params.append(f"%{search}%")
         
         if free_only:
-            where_conditions.append("freetoplay = 1")
+            where_conditions.append("free_to_play = 1")
         
         where_clause = ""
         if where_conditions:
@@ -240,8 +240,8 @@ async def list_games(
                 g.appid, 
                 g.name, 
                 g.type, 
-                g.releasedate, 
-                g.freetoplay,
+                g.release_date, 
+                g.free_to_play,
                 g.price_records,
                 (
                     SELECT ph.final_price 
@@ -297,7 +297,7 @@ async def get_game(appid: int):
         
         # Buscar jogo
         cursor.execute("""
-            SELECT appid, name, type, releasedate, freetoplay
+            SELECT appid, name, type, release_date, free_to_play
             FROM games
             WHERE appid = %s
         """, (appid,))
@@ -361,7 +361,7 @@ async def get_stats():
         price_stats = cursor.fetchone()
         
         # Games grátis
-        cursor.execute("SELECT COUNT(*) as total FROM games WHERE freetoplay = 1")
+        cursor.execute("SELECT COUNT(*) as total FROM games WHERE free_to_play = 1")
         free_games = cursor.fetchone()['total']
         
         # Top 10 jogos com mais dados
@@ -650,8 +650,8 @@ async def import_dataset():
                 appid = row['appid'].strip()
                 game_type = row['type'].strip()
                 name = row['name'].strip()
-                releasedate = row['releasedate'].strip()
-                freetoplay = row['freetoplay'].strip()
+                release_date = row['release_date'].strip()
+                free_to_play = row['free_to_play'].strip()
                 
                 if not appid or not game_type:
                     games_skipped += 1
@@ -659,24 +659,24 @@ async def import_dataset():
                 
                 # Converter data
                 release_date_formatted = None
-                if releasedate:
+                if release_date:
                     try:
-                        date_obj = dt.strptime(releasedate, '%d-%b-%y')
+                        date_obj = dt.strptime(release_date, '%d-%b-%y')
                         release_date_formatted = date_obj.strftime('%Y-%m-%d')
                     except:
                         pass
                 
-                is_free = 1 if freetoplay == '1' else 0
+                is_free = 1 if free_to_play == '1' else 0
                 
                 try:
                     sql = """
-                    INSERT INTO games (appid, name, type, releasedate, freetoplay, price_records)
+                    INSERT INTO games (appid, name, type, release_date, free_to_play, price_records)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name),
                         type = VALUES(type),
-                        releasedate = VALUES(releasedate),
-                        freetoplay = VALUES(freetoplay)
+                        release_date = VALUES(release_date),
+                        free_to_play = VALUES(free_to_play)
                     """
                     cursor.execute(sql, (
                         int(appid), name, game_type, 
