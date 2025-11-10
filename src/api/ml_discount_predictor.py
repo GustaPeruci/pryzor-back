@@ -153,7 +153,7 @@ class MLDiscountPredictor:
                     appid,
                     name,
                     type,
-                    freetoplay
+                    free_to_play
                 FROM games
                 WHERE appid = %s
             """
@@ -235,7 +235,7 @@ class MLDiscountPredictor:
                 }
             
             # Verificar se é free-to-play
-            if game_info.get('freetoplay'):
+            if game_info.get('free_to_play'):
                 return {
                     'appid': appid,
                     'game_name': game_info.get('name'),

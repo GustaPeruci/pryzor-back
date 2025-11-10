@@ -1,0 +1,53 @@
+name: CI - Backend
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+      runs-on: ubuntu-latest
+      services:
+        mysql:
+          image: mysql:8.0
+          env:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: pryzor
+          ports:
+            - 3306:3306
+          options: >-
+            --health-cmd="mysqladmin ping --silent"
+            --health-interval=10s
+            --health-timeout=5s
+            --health-retries=3
+      steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Preparar dataset com histórico de preços
+        run: python scripts/prepare_binary_target.py
+      - name: Inicializar banco de dados
+        run: PYTHONPATH=src python scripts/init_db.py
+        env:
+          DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/pryzor
+          MYSQL_DATABASE: pryzor
+      - name: Start FastAPI server
+        run: |
+          nohup python src/main.py &
+          sleep 5
+        env:
+          DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/pryzor
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          MYSQL_USER: root
+          MYSQL_PASSWORD: root
+          MYSQL_DATABASE: pryzor
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: pryzor
+      - name: Run tests
+        run: PYTHONPATH=src pytest tests
