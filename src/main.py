@@ -50,11 +50,11 @@ app.add_middleware(
 
 # Configuração MySQL
 MYSQL_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', '3306')),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', os.getenv('DB_PASS', 'root')),
-    'database': os.getenv('DB_NAME', 'steam_pryzor')
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'port': int(os.getenv('MYSQL_PORT', '3306')),
+    'user': os.getenv('MYSQL_USER', 'root'),
+    'password': os.getenv('MYSQL_PASSWORD', os.getenv('MYSQL_PASS', 'root')),
+    'database': os.getenv('MYSQL_DATABASE', 'steam_pryzor')
 }
 
 # ============================================================================
