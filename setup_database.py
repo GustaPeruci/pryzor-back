@@ -68,13 +68,13 @@ def create_database():
                 appid INT PRIMARY KEY,
                 name VARCHAR(500) NOT NULL,
                 type VARCHAR(50),
-                releasedate DATE,
-                freetoplay TINYINT(1) DEFAULT 0,
+                release_date DATE,
+                free_to_play TINYINT(1) DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_name (name(100)),
                 INDEX idx_type (type),
-                INDEX idx_freetoplay (freetoplay)
+                INDEX idx_free_to_play (free_to_play)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
         print("✅ Tabela 'games' criada com sucesso!")
