@@ -6,7 +6,9 @@ Cria o banco e as tabelas necessárias
 import pymysql
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
+load_dotenv()  
 # Ler configurações do .env
 env_file = Path(__file__).parent / '.env'
 config = {}

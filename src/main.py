@@ -15,6 +15,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from dotenv import load_dotenv
+
+load_dotenv()  
+
 # Ensure this src folder is importable
 _SRC_DIR = os.path.dirname(__file__)
 if _SRC_DIR not in sys.path:
@@ -120,22 +124,20 @@ async def startup_event():
         print(f"   Database: {MYSQL_CONFIG['database']}")
         print(f"   Games: {games_count:,}")
         print(f"   Price Records: {prices_count:,}")
-        
-        # Carregar modelo ML
-        predictor = get_ml_predictor()
-        if predictor.is_loaded():
-            print(f"\n🤖 Modelo ML v{predictor.version}")
-            print(f"   Validação: {predictor.validation_method}")
-            print(f"   F1-Score: {predictor.metrics.get('f1_score', 0):.4f}")
-            print(f"   Precision: {predictor.metrics.get('precision', 0):.4f}")
-        else:
-            print("\n⚠️  Modelo ML não carregado")
-        
-        print("\n✅ API inicializada com sucesso!")
-        print("=" * 60 + "\n")
-        
     except Exception as e:
-        print(f"\n❌ Erro na inicialização: {e}\n")
+        print(f"\n⚠️  Não foi possível conectar ao banco de dados: {e}\n")
+        print(f"   A API será inicializada sem conexão ao banco. Use os endpoints de setup para criar/importar a base após o deploy.")
+    # Carregar modelo ML
+    predictor = get_ml_predictor()
+    if predictor.is_loaded():
+        print(f"\n🤖 Modelo ML v{predictor.version}")
+        print(f"   Validação: {predictor.validation_method}")
+        print(f"   F1-Score: {predictor.metrics.get('f1_score', 0):.4f}")
+        print(f"   Precision: {predictor.metrics.get('precision', 0):.4f}")
+    else:
+        print("\n⚠️  Modelo ML não carregado")
+    print("\n✅ API inicializada com sucesso!")
+    print("=" * 60 + "\n")
 
 # ============================================================================
 # ENDPOINTS - SISTEMA
