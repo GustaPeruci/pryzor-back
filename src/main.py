@@ -650,8 +650,9 @@ async def import_dataset():
                 appid = row['appid'].strip()
                 game_type = row['type'].strip()
                 name = row['name'].strip()
-                release_date = row['release_date'].strip()
-                free_to_play = row['free_to_play'].strip()
+                # Normalizar nomes de colunas (CSV usa releasedate/freetoplay sem underscore)
+                release_date = row.get('release_date', row.get('releasedate', '')).strip()
+                free_to_play = row.get('free_to_play', row.get('freetoplay', '')).strip()
                 
                 if not appid or not game_type:
                     games_skipped += 1
