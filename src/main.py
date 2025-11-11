@@ -159,36 +159,34 @@ async def health_check():
     try:
         conn = get_mysql_connection()
         cursor = conn.cursor()
-        
         cursor.execute("SELECT 1")
         db_test = cursor.fetchone()[0]
-        
         cursor.execute("SELECT COUNT(*) FROM games")
         games = cursor.fetchone()[0]
-        
         cursor.execute("SELECT COUNT(*) FROM price_history")
         prices = cursor.fetchone()[0]
-        
         cursor.close()
         conn.close()
-        
-        predictor = get_ml_predictor()
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "database": {
-                "status": "connected",
-                "games": games,
-                "price_records": prices
-            },
-            "ml_model": {
-                "loaded": predictor.is_loaded(),
-                "version": predictor.version if predictor.is_loaded() else None
-            }
+        db_status = {
+            "status": "connected",
+            "games": games,
+            "price_records": prices
         }
     except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        db_status = {
+            "status": "unavailable",
+            "error": str(e)
+        }
+    predictor = get_ml_predictor()
+    return {
+        "status": "healthy" if db_status["status"] == "connected" else "degraded",
+        "timestamp": datetime.now().isoformat(),
+        "database": db_status,
+        "ml_model": {
+            "loaded": predictor.is_loaded(),
+            "version": predictor.version if predictor.is_loaded() else None
+        }
+    }
 
 # ============================================================================
 # ENDPOINTS - DADOS
