@@ -654,7 +654,7 @@ async def import_dataset():
                 release_date = row.get('release_date', row.get('releasedate', '')).strip()
                 free_to_play = row.get('free_to_play', row.get('freetoplay', '')).strip()
                 
-                if not appid or not game_type:
+                if not appid:
                     games_skipped += 1
                     continue
                 
