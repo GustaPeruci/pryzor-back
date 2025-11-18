@@ -221,7 +221,7 @@ async def list_games(
             params.append(f"%{search}%")
         
         if free_only:
-            where_conditions.append("free_to_play = 1")
+            where_conditions.append("freetoplay = 1")
         
         where_clause = ""
         if where_conditions:
@@ -241,8 +241,8 @@ async def list_games(
                 g.appid, 
                 g.name, 
                 g.type, 
-                g.release_date, 
-                g.free_to_play,
+                g.releasedate as release_date, 
+                g.freetoplay as free_to_play,
                 (
                     SELECT ph.final_price 
                     FROM price_history ph 
@@ -297,7 +297,7 @@ async def get_game(appid: int):
         
         # Buscar jogo
         cursor.execute("""
-            SELECT appid, name, type, release_date, free_to_play
+            SELECT appid, name, type, releasedate as release_date, freetoplay as free_to_play
             FROM games
             WHERE appid = %s
         """, (appid,))
@@ -361,7 +361,7 @@ async def get_stats():
         price_stats = cursor.fetchone()
         
         # Games grátis
-        cursor.execute("SELECT COUNT(*) as total FROM games WHERE free_to_play = 1")
+        cursor.execute("SELECT COUNT(*) as total FROM games WHERE freetoplay = 1")
         free_games = cursor.fetchone()['total']
         
         # Top 10 jogos com mais dados
@@ -671,13 +671,13 @@ async def import_dataset():
                 
                 try:
                     sql = """
-                    INSERT INTO games (appid, name, type, release_date, free_to_play, price_records)
+                    INSERT INTO games (appid, name, type, releasedate, freetoplay, price_records)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name),
                         type = VALUES(type),
-                        release_date = VALUES(release_date),
-                        free_to_play = VALUES(free_to_play)
+                        releasedate = VALUES(releasedate),
+                        freetoplay = VALUES(freetoplay)
                     """
                     cursor.execute(sql, (
                         int(appid), name, game_type, 
@@ -685,6 +685,7 @@ async def import_dataset():
                     ))
                     games_imported += 1
                 except Exception as e:
+                    print(f"⚠️  Erro ao importar jogo {appid}: {e}")
                     games_skipped += 1
                     continue
         

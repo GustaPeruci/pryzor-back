@@ -153,7 +153,7 @@ class MLDiscountPredictor:
                     appid,
                     name,
                     type,
-                    free_to_play
+                    freetoplay as free_to_play
                 FROM games
                 WHERE appid = %s
             """
