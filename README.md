@@ -1,28 +1,122 @@
-# 🔧 Pryzor Backend - API e Machine Learning
 
-> **Parte do TCC de Engenharia de Software**
+# Pryzor Backend - API e Machine Learning
 
-Aqui fica o coração do Pryzor: a API FastAPI que serve os dados e o modelo de Machine Learning que faz as previsões.
+Este documento apresenta o backend do projeto Pryzor, desenvolvido como parte de Trabalho de Conclusão de Curso em Engenharia de Software. O sistema implementa uma API REST com FastAPI, integra um modelo de Machine Learning para previsão de descontos na Steam e utiliza banco de dados MySQL para persistência dos dados.
 
 ---
 
-## � O que tem aqui?
+## Sumário
 
-Este é o backend do projeto. Se você já leu o README principal, sabe que o Pryzor prevê descontos de jogos da Steam. Aqui é onde a mágica acontece:
+1. Requisitos Funcionais
+2. Casos de Uso
+3. Arquitetura do Sistema
+4. Instruções de Deploy
+5. Cobertura de Testes Automatizados
+6. Análise Estática de Código
+7. Monitoramento e Observabilidade
+8. Ética e Privacidade
+9. Fluxos de Negócio
+10. Links Úteis
 
-- 🚀 **API REST** com FastAPI (11 endpoints funcionando)
-- 🧠 **Modelo ML v2.0** treinado com Random Forest
-- 💾 **Conexão MySQL** com 2.000 jogos e 725k registros de preços
-- ✅ **Testes automatizados** para garantir que tudo funciona
-- 📚 **Documentação interativa** com Swagger
+---
 
-### Métricas do modelo:
-- **Precision:** 90.46% - quando prevê desconto, acerta 9 em 10 vezes
-- **F1-Score:** 74.34% - balanço entre acertos e cobertura
-- **Recall:** 63.09% - captura 63% dos descontos reais
-- **Validação real:** 92.4% de acurácia em 1.000 jogos testados
+## 1. Requisitos Funcionais
 
-**📖 Histórico completo:** Veja `ml_model/README.md` para detalhes do modelo v2.0 e `ml_model/experiments_failed/` para análise dos experimentos v2.1 e v3.0 que falharam.
+- Permitir busca e listagem de jogos da Steam
+- Exibir detalhes e histórico de preços de jogos
+- Realizar previsões de desconto utilizando modelo de Machine Learning
+- Fornecer recomendações de compra ou espera
+- Disponibilizar estatísticas gerais do sistema
+- Permitir predição em lote para múltiplos jogos
+- Oferecer endpoints administrativos para setup e importação de dados
+
+## 2. Casos de Uso
+
+- Usuário consulta se um jogo terá desconto nos próximos 30 dias
+- Usuário busca jogos por nome e visualiza histórico de preços
+- Usuário recebe recomendação baseada em análise de dados e modelo ML
+- Administrador inicializa banco de dados e importa datasets
+
+## 3. Arquitetura do Sistema
+
+O sistema segue arquitetura client-server, com separação entre frontend (React) e backend (FastAPI). O backend é composto por módulos de API, serviço de Machine Learning, integração com banco de dados MySQL e scripts de ETL/modelagem.
+
+Diagrama de arquitetura disponível em `/docs/ARQUITETURA.md`.
+
+Principais componentes:
+- API REST (FastAPI)
+- Serviço de predição ML (Random Forest)
+- Banco de dados MySQL
+- Scripts de ETL e treinamento
+
+## 4. Instruções de Deploy
+
+### Pré-requisitos
+- Python 3.8+
+- MySQL 8.0+
+
+### Passos
+1. Clone o repositório e acesse a pasta `pryzor-back`
+2. Crie e ative ambiente virtual:
+  ```bash
+  python -m venv venv
+  venv\Scripts\activate  # Windows
+  source venv/bin/activate  # Mac/Linux
+  ```
+3. Instale dependências:
+  ```bash
+  pip install -r requirements.txt
+  ```
+4. Configure o banco de dados em `.env` (veja `.env.example`)
+5. Execute a API:
+  ```bash
+  python src/main.py
+  ```
+6. Acesse documentação interativa em `http://localhost:8000/docs`
+
+Para setup do banco e importação de dados, utilize os endpoints administrativos conforme instruções acima.
+
+## 5. Cobertura de Testes Automatizados
+
+Testes automatizados implementados com pytest, cobrindo todos os principais endpoints, cenários de erro, predição individual e em lote, saúde do sistema e estatísticas.
+
+Para executar os testes:
+```bash
+pytest tests/
+```
+Relatório de cobertura pode ser gerado com:
+```bash
+pytest --cov=src tests/
+```
+
+## 6. Análise Estática de Código
+
+Recomenda-se utilizar SonarQube, SonarCloud ou CodeClimate para análise de qualidade e segurança do código. Inclua relatório ou link na documentação.
+
+## 7. Monitoramento e Observabilidade
+
+O sistema pode ser integrado a ferramentas como Prometheus, Grafana ou Zabbix para monitoramento de métricas e saúde da aplicação. Recomenda-se configurar dashboards para acompanhamento em produção.
+
+## 8. Ética e Privacidade
+
+O projeto respeita a privacidade dos dados, não utiliza informações sensíveis e está em conformidade com a LGPD. Todos os dados utilizados são públicos ou sintéticos, sem risco de exposição indevida.
+
+## 9. Fluxos de Negócio
+
+- Consulta de jogos e histórico de preços
+- Previsão de desconto e recomendação
+- Setup e importação de dados
+
+## 10. Links Úteis
+
+- Repositório: [GitHub](https://github.com/GustaPeruci/Pryzor)
+- Documentação interativa: http://localhost:8000/docs
+- Diagrama de arquitetura: `/docs/ARQUITETURA.md`
+- Relatório de testes: `/docs/TESTES.md`
+
+---
+
+Para informações detalhadas sobre o modelo de Machine Learning, consulte `/ml_model/README.md`.
 
 ---
 
