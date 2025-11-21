@@ -186,7 +186,7 @@ Você deve ver algo como:
 
 ---
 
-## 📡 API Endpoints (Todos os 11 endpoints)
+## � API Endpoints (Todos os 11 endpoints)
 
 ### 🏠 Sistema e Health Check
 
@@ -325,21 +325,39 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/admin/import-dataset" -Method 
 
 ---
 
-## 🧪 Testes
 
-Quer ter certeza que tudo funciona? Rode os testes:
+## 🧪 Testes Automatizados
+
+O backend Pryzor possui cobertura de testes automatizados para todos os principais endpoints e cenários de erro, garantindo robustez e qualidade para portfólio ou produção.
+
+### Como rodar todos os testes
 
 ```bash
-python tests/test_ml_service.py
+pytest tests/
 ```
 
-Ele vai testar:
-- ✅ Se o modelo ML carrega
-- ✅ Se as predições funcionam
-- ✅ Se os endpoints respondem corretamente
-- ✅ Casos especiais (jogos free-to-play, jogos inexistentes, etc)
+### O que é testado?
 
-Se quiser testar só o modelo sem rodar a API, é só apertar ENTER quando perguntar.
+- Endpoints principais: saúde (`/health`), listagem de jogos, detalhes, estatísticas, informações do modelo ML, predição individual e em lote
+- Cenários de erro: jogo não encontrado, predição ML inválida
+- Estrutura das respostas e status HTTP
+
+Exemplo de arquivo de teste expandido: `tests/test_api.py`
+
+```python
+def test_health_check(): ...
+def test_list_games(): ...
+def test_game_details(): ...
+def test_stats_endpoint(): ...
+def test_ml_info(): ...
+def test_ml_health_endpoint(): ...
+def test_ml_predict_single(): ...
+def test_ml_predict_batch(): ...
+def test_game_not_found(): ...
+def test_ml_predict_invalid_appid(): ...
+```
+
+**Cobertura suficiente para TCC, portfólio ou produção.** Se quiser expandir ainda mais, pode incluir testes para endpoints de administração ou casos de borda.
 
 ---
 
