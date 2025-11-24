@@ -30,6 +30,8 @@ class MLDiscountPredictor:
         self.version = "unknown"
         self.validation_method = "unknown"
         self.trained_at = None
+        self._prediction_cache = {}  # Cache simples de predições
+        self._cache_ttl = 300  # 5 minutos
         self._load_model()
     
     def _get_model_path(self) -> str:
@@ -105,12 +107,13 @@ class MLDiscountPredictor:
             }
         }
     
-    def _get_price_history(self, appid: int, days: int = 120) -> Optional[pd.DataFrame]:
+    def _get_price_history(self, appid: int, days: int = 60) -> Optional[pd.DataFrame]:
         """
         Busca histórico de preços do banco de dados
         """
         try:
-            conn = mysql.connector.connect(**self.mysql_config)
+            logger.info(f"Buscando histórico de preços para appid {appid}")
+            conn = mysql.connector.connect(**self.mysql_config, connection_timeout=5)
             cursor = conn.cursor(dictionary=True)
             
             query = """
@@ -129,6 +132,8 @@ class MLDiscountPredictor:
             cursor.close()
             conn.close()
             
+            logger.info(f"Encontrados {len(rows)} registros de preço para appid {appid}")
+            
             if not rows:
                 return None
             
@@ -141,11 +146,14 @@ class MLDiscountPredictor:
         except Error as e:
             logger.error(f"Erro ao buscar histórico de preços para appid {appid}: {e}")
             return None
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar histórico para appid {appid}: {e}")
+            return None
     
     def _get_game_info(self, appid: int) -> Optional[Dict[str, Any]]:
         """Busca informações do jogo"""
         try:
-            conn = mysql.connector.connect(**self.mysql_config)
+            conn = mysql.connector.connect(**self.mysql_config, connection_timeout=5)
             cursor = conn.cursor(dictionary=True)
             
             query = """
@@ -224,6 +232,14 @@ class MLDiscountPredictor:
                 'appid': appid,
                 'model_loaded': False
             }
+        
+        # Verificar cache
+        cache_key = f"pred_{appid}"
+        if cache_key in self._prediction_cache:
+            cached_data, cached_time = self._prediction_cache[cache_key]
+            if (datetime.now() - cached_time).seconds < self._cache_ttl:
+                logger.info(f"Retornando predição do cache para appid {appid}")
+                return cached_data
         
         try:
             # Buscar informações do jogo
@@ -310,7 +326,7 @@ class MLDiscountPredictor:
                 recommendation_text = "Baixa probabilidade de desconto melhor em breve"
                 reasoning.append(f"Apenas {prob_discount*100:.0f}% de chance de desconto >20%")
             
-            return {
+            result = {
                 'appid': appid,
                 'game_name': game_info.get('name'),
                 'will_have_discount': bool(prediction),
@@ -325,6 +341,11 @@ class MLDiscountPredictor:
                 'model_version': self.version,
                 'prediction_date': datetime.now().isoformat()
             }
+            
+            # Cachear resultado
+            self._prediction_cache[f"pred_{appid}"] = (result, datetime.now())
+            
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao fazer predição para appid {appid}: {e}")

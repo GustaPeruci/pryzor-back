@@ -6,6 +6,7 @@ Modelo: RandomForest v2.0 com validação temporal
 
 import os
 import sys
+import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
@@ -16,6 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()  
 
@@ -69,18 +72,27 @@ MYSQL_CONFIG = {
 # ============================================================================
 
 _ml_predictor: Optional[MLDiscountPredictor] = None
+_ml_loading: bool = False
 
 def get_ml_predictor() -> MLDiscountPredictor:
-    """Singleton do preditor ML"""
-    global _ml_predictor
-    if _ml_predictor is None:
-        _ml_predictor = MLDiscountPredictor(mysql_config=MYSQL_CONFIG)
+    """Singleton do preditor ML com lazy loading"""
+    global _ml_predictor, _ml_loading
+    if _ml_predictor is None and not _ml_loading:
+        _ml_loading = True
+        try:
+            _ml_predictor = MLDiscountPredictor(mysql_config=MYSQL_CONFIG)
+            logger.info(f"✅ Modelo ML v{_ml_predictor.version} carregado")
+        except Exception as e:
+            logger.error(f"❌ Erro ao carregar modelo ML: {e}")
+            raise HTTPException(status_code=503, detail="Modelo ML não disponível")
+        finally:
+            _ml_loading = False
     return _ml_predictor
 
 def get_mysql_connection():
     """Obtém conexão MySQL"""
     try:
-        return mysql.connector.connect(**MYSQL_CONFIG)
+        return mysql.connector.connect(**MYSQL_CONFIG, connection_timeout=3)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"MySQL connection failed: {str(e)}")
 
@@ -106,39 +118,7 @@ async def startup_event():
     print("\n" + "=" * 60)
     print("🚀 Pryzor API - Sistema de Predição de Descontos")
     print("=" * 60)
-    
-    try:
-        # Testar conexão MySQL
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT COUNT(*) FROM games")
-        games_count = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM price_history")
-        prices_count = cursor.fetchone()[0]
-        
-        cursor.close()
-        conn.close()
-        
-        print(f"📊 MySQL Database")
-        print(f"   Host: {MYSQL_CONFIG['host']}:{MYSQL_CONFIG['port']}")
-        print(f"   Database: {MYSQL_CONFIG['database']}")
-        print(f"   Games: {games_count:,}")
-        print(f"   Price Records: {prices_count:,}")
-    except Exception as e:
-        print(f"\n⚠️  Não foi possível conectar ao banco de dados: {e}\n")
-        print(f"   A API será inicializada sem conexão ao banco. Use os endpoints de setup para criar/importar a base após o deploy.")
-    # Carregar modelo ML
-    predictor = get_ml_predictor()
-    if predictor.is_loaded():
-        print(f"\n🤖 Modelo ML v{predictor.version}")
-        print(f"   Validação: {predictor.validation_method}")
-        print(f"   F1-Score: {predictor.metrics.get('f1_score', 0):.4f}")
-        print(f"   Precision: {predictor.metrics.get('precision', 0):.4f}")
-    else:
-        print("\n⚠️  Modelo ML não carregado")
-    print("\n✅ API inicializada com sucesso!")
+    print("\n✅ API pronta para receber requisições!")
     print("=" * 60 + "\n")
 
 # ============================================================================
@@ -157,9 +137,18 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check do sistema"""
+    """Health check rápido do sistema"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "api_version": "1.0.0-TCC"
+    }
+
+@app.get("/health/full")
+async def health_check_full():
+    """Health check completo do sistema"""
     try:
-        conn = get_mysql_connection()
+        conn = mysql.connector.connect(**MYSQL_CONFIG, connection_timeout=3)
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         db_test = cursor.fetchone()[0]
@@ -179,15 +168,18 @@ async def health_check():
             "status": "unavailable",
             "error": str(e)
         }
-    predictor = get_ml_predictor()
+    
+    # Verificar modelo apenas se já foi carregado
+    ml_status = {
+        "loaded": _ml_predictor is not None,
+        "version": _ml_predictor.version if _ml_predictor else None
+    }
+    
     return {
         "status": "healthy" if db_status["status"] == "connected" else "degraded",
         "timestamp": datetime.now().isoformat(),
         "database": db_status,
-        "ml_model": {
-            "loaded": predictor.is_loaded(),
-            "version": predictor.version if predictor.is_loaded() else None
-        }
+        "ml_model": ml_status
     }
 
 # ============================================================================
@@ -237,28 +229,14 @@ async def list_games(
         # Limitar para performance
         max_limit = min(limit, 1000)
         
-        # Buscar jogos
+        # Buscar jogos (query simplificada sem subqueries)
         games_query = f"""
             SELECT 
                 g.appid, 
                 g.name, 
                 g.type, 
                 g.releasedate as release_date, 
-                g.freetoplay as free_to_play,
-                (
-                    SELECT ph.final_price 
-                    FROM price_history ph 
-                    WHERE ph.appid = g.appid AND ph.final_price IS NOT NULL 
-                    ORDER BY ph.date DESC 
-                    LIMIT 1
-                ) as current_price,
-                (
-                    SELECT ph.discount 
-                    FROM price_history ph 
-                    WHERE ph.appid = g.appid AND ph.discount IS NOT NULL 
-                    ORDER BY ph.date DESC 
-                    LIMIT 1
-                ) as current_discount
+                g.freetoplay as free_to_play
             FROM games g {where_clause}
             ORDER BY g.appid
             LIMIT %s OFFSET %s
@@ -435,12 +413,20 @@ async def ml_predict_single(appid: int, predictor: MLDiscountPredictor = Depends
         - recommendation: Recomendação de compra
         - reasoning: Fatores que influenciaram
     """
-    result = predictor.predict(appid)
+    logger.info(f"Recebendo predição para appid: {appid}")
     
-    if 'error' in result:
-        raise HTTPException(status_code=404, detail=result)
-    
-    return result
+    try:
+        result = predictor.predict(appid)
+        
+        if 'error' in result:
+            logger.warning(f"Erro na predição para {appid}: {result.get('error')}")
+            raise HTTPException(status_code=404, detail=result)
+        
+        logger.info(f"Predição concluída para {appid}")
+        return result
+    except Exception as e:
+        logger.error(f"Erro inesperado na predição {appid}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/ml/predict/batch")
 async def ml_predict_batch(request: BatchRequest, predictor: MLDiscountPredictor = Depends(get_ml_predictor)):
@@ -839,5 +825,19 @@ async def import_dataset():
 
 if __name__ == "__main__":
     import uvicorn
+    import logging
+    
+    # Configurar logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
     print("🚀 Iniciando Pryzor API...")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        log_level="info",
+        access_log=True
+    )
