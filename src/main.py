@@ -229,14 +229,28 @@ async def list_games(
         # Limitar para performance
         max_limit = min(limit, 1000)
         
-        # Buscar jogos (query simplificada sem subqueries)
+        # Buscar jogos (com subqueries para preço e desconto)
         games_query = f"""
             SELECT 
                 g.appid, 
                 g.name, 
                 g.type, 
                 g.releasedate as release_date, 
-                g.freetoplay as free_to_play
+                g.freetoplay as free_to_play,
+                (
+                    SELECT ph.final_price 
+                    FROM price_history ph 
+                    WHERE ph.appid = g.appid AND ph.final_price IS NOT NULL 
+                    ORDER BY ph.date DESC 
+                    LIMIT 1
+                ) as current_price,
+                (
+                    SELECT ph.discount 
+                    FROM price_history ph 
+                    WHERE ph.appid = g.appid AND ph.discount IS NOT NULL 
+                    ORDER BY ph.date DESC 
+                    LIMIT 1
+                ) as current_discount
             FROM games g {where_clause}
             ORDER BY g.appid
             LIMIT %s OFFSET %s
