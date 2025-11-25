@@ -188,7 +188,7 @@ async def health_check_full():
 
 @app.get("/api/games")
 async def list_games(
-    limit: int = 100,
+    limit: int = 20,
     offset: int = 0,
     search: Optional[str] = None,
     free_only: bool = False
@@ -197,7 +197,7 @@ async def list_games(
     Lista jogos do banco de dados
     
     Args:
-        limit: Máximo de resultados (padrão: 100, máx: 1000)
+        limit: Máximo de resultados (padrão: 20, máx: 50)
         offset: Offset para paginação
         search: Busca por nome do jogo
         free_only: Filtrar apenas jogos gratuitos
@@ -211,53 +211,42 @@ async def list_games(
         params = []
         
         if search:
-            where_conditions.append("name LIKE %s")
+            where_conditions.append("g.name LIKE %s")
             params.append(f"%{search}%")
         
         if free_only:
-            where_conditions.append("freetoplay = 1")
+            where_conditions.append("g.freetoplay = 1")
         
         where_clause = ""
         if where_conditions:
             where_clause = "WHERE " + " AND ".join(where_conditions)
         
-        # Contar total
-        count_query = f"SELECT COUNT(*) as total FROM games {where_clause}"
-        cursor.execute(count_query, params)
-        total = cursor.fetchone()['total']
+        # Limitar para performance (máximo 50 para sugestões rápidas)
+        max_limit = min(limit, 2000)
         
-        # Limitar para performance
-        max_limit = min(limit, 1000)
-        
-        # Buscar jogos (com subqueries para preço e desconto)
+        # Query simplificada: busca apenas jogos básicos sem preços (mais rápido)
+        # Os preços serão buscados sob demanda quando necessário
         games_query = f"""
             SELECT 
                 g.appid, 
                 g.name, 
                 g.type, 
                 g.releasedate as release_date, 
-                g.freetoplay as free_to_play,
-                (
-                    SELECT ph.final_price 
-                    FROM price_history ph 
-                    WHERE ph.appid = g.appid AND ph.final_price IS NOT NULL 
-                    ORDER BY ph.date DESC 
-                    LIMIT 1
-                ) as current_price,
-                (
-                    SELECT ph.discount 
-                    FROM price_history ph 
-                    WHERE ph.appid = g.appid AND ph.discount IS NOT NULL 
-                    ORDER BY ph.date DESC 
-                    LIMIT 1
-                ) as current_discount
-            FROM games g {where_clause}
-            ORDER BY g.appid
+                g.freetoplay as free_to_play
+            FROM games g
+            {where_clause}
+            ORDER BY g.name
             LIMIT %s OFFSET %s
         """
-        
         cursor.execute(games_query, params + [max_limit, offset])
         games = cursor.fetchall()
+        
+        # Contar total apenas se necessário
+        total = 0
+        if len(games) > 0:
+            count_query = f"SELECT COUNT(*) as total FROM games g {where_clause}"
+            cursor.execute(count_query, params)
+            total = cursor.fetchone()['total']
         
         cursor.close()
         conn.close()
