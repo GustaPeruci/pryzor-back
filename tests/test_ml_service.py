@@ -37,6 +37,10 @@ def print_result(name: str, passed: bool, details: str = ""):
     if details:
         print(f"         {details}")
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_direct_service():
     """Testa o serviço diretamente (sem API)"""
     print_section("TESTE 1: Serviço ML Direto (sem API)")
@@ -92,6 +96,12 @@ def test_direct_service():
         traceback.print_exc()
         return False
 
+import pytest
+
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer API rodando e banco de dados - skipado no CI/CD"
+)
 def test_api_endpoints():
     """Testa os endpoints da API"""
     print_section("TESTE 2: Endpoints da API")
@@ -152,6 +162,10 @@ def test_api_endpoints():
         traceback.print_exc()
         return False
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_edge_cases():
     """Testa casos especiais"""
     print_section("TESTE 3: Casos Especiais")

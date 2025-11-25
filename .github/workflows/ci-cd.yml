@@ -27,8 +27,10 @@ jobs:
         pip install pytest pytest-cov
     
     - name: Run tests with coverage
+      env:
+        CI: true
       run: |
-        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term -v
     
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4

@@ -9,16 +9,25 @@ from main import app
 client = TestClient(app)
 
 def test_health_check():
+    """Testa endpoint de health check básico (não requer DB)"""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_list_games():
     response = client.get("/api/games?limit=5")
     assert response.status_code == 200
     assert "games" in response.json()
     assert isinstance(response.json()["games"], list)
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_game_details():
     # Use um appid válido do seu banco, ex: 730
     response = client.get("/api/games/730")
@@ -27,17 +36,25 @@ def test_game_details():
         assert "game" in response.json()
 
 def test_ml_info():
+    """Testa endpoint de info do modelo ML (não requer DB)"""
     response = client.get("/api/ml/info")
     assert response.status_code == 200
     assert "version" in response.json()
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_ml_predict_single():
     response = client.get("/api/ml/predict/730")
     assert response.status_code in [200, 404]
     if response.status_code == 200:
         assert "recommendation" in response.json()
 
-
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_stats_endpoint():
     response = client.get("/api/stats")
     assert response.status_code == 200
@@ -46,12 +63,17 @@ def test_stats_endpoint():
     assert "price_statistics" in data
 
 def test_ml_health_endpoint():
+    """Testa endpoint de health do ML (não requer DB)"""
     response = client.get("/api/ml/health")
     assert response.status_code == 200
     data = response.json()
     assert "status" in data
     assert "model_loaded" in data
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_ml_predict_batch():
     # Testa predição em lote (pode ajustar appids conforme dados reais)
     payload = {"appids": [730, 440, 570]}
@@ -61,10 +83,18 @@ def test_ml_predict_batch():
         data = response.json()
         assert "predictions" in data
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_game_not_found():
     response = client.get("/api/games/99999999")
     assert response.status_code == 404
 
+@pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requer banco de dados MySQL - skipado no CI/CD"
+)
 def test_ml_predict_invalid_appid():
     response = client.get("/api/ml/predict/99999999")
     assert response.status_code == 404
