@@ -3,6 +3,7 @@ Script de teste para validação da integração do modelo ML v2.0
 Testa os endpoints da API e o serviço de predição
 """
 
+import pytest
 import sys
 import os
 import requests
