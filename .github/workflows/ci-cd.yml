@@ -1,0 +1,54 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-coverage
+        path: htmlcov/
+    
+    - name: Test Summary
+      run: |
+        echo "✅ Backend tests completed successfully!"
+
+  deploy:
+    name: Deploy to Render
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Trigger Render Deploy
+      run: |
+        echo "🚀 Deploy triggered on Render"
+        echo "Render will automatically deploy when it detects push to main branch"
+        echo "Check Render dashboard for deployment status"
