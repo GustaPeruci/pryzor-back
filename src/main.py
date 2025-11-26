@@ -1,5 +1,5 @@
 """
-Pryzor API - Backend Acadêmico TCC
+Pryzor API - Backend Acadêmico (Portfólio de Projeto)
 API REST para predição de descontos em jogos Steam
 Modelo: RandomForest v2.0 com validação temporal
 """
@@ -36,7 +36,7 @@ from api.ml_discount_predictor import MLDiscountPredictor
 app = FastAPI(
     title="Pryzor - Steam Discount Prediction API",
     description="API acadêmica para predição de descontos em jogos Steam usando ML",
-    version="1.0.0-TCC"
+    version="1.0.0-portfolio"
 )
 
 # CORS - Configuração para frontend
@@ -130,7 +130,7 @@ async def root():
     """Endpoint raiz da API"""
     return {
         "message": "Pryzor API - Sistema de Predição de Descontos Steam",
-        "version": "1.0.0-TCC",
+        "version": "1.0.0-portfolio",
         "docs": "/docs",
         "status": "operational"
     }
@@ -141,7 +141,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "api_version": "1.0.0-TCC"
+        "api_version": "1.0.0-portfolio"
     }
 
 @app.get("/health/full")
